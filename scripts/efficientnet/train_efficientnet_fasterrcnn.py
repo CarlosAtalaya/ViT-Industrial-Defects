@@ -52,8 +52,8 @@ def get_model_efficientnet_fasterrcnn(num_classes: int, pretrained_backbone: boo
     
     # Anchor generator
     anchor_generator = AnchorGenerator(
-        sizes=((32, 64, 128, 256, 512),),
-        aspect_ratios=((0.5, 1.0, 2.0),)
+        sizes=((8, 16, 32, 64, 128, 256),),  # ← Añadir 8px y 16px
+        aspect_ratios=((0.33, 0.5, 1.0, 2.0, 3.0),)  # ← Más ratios
     )
     
     # ROI Pooler

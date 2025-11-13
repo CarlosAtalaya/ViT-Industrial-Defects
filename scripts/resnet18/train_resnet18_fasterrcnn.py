@@ -64,8 +64,8 @@ def get_model_resnet18_fasterrcnn(num_classes: int, pretrained_backbone: bool = 
     # Definir anchor generator
     # Los anchors son las "cajas base" que la RPN ajustará
     anchor_generator = AnchorGenerator(
-        sizes=((32, 64, 128, 256, 512),),  # Tamaños de anchors
-        aspect_ratios=((0.5, 1.0, 2.0),)    # Ratios de aspecto
+        sizes=((8, 16, 32, 64, 128, 256),),  # ← Añadir 8px y 16px
+        aspect_ratios=((0.33, 0.5, 1.0, 2.0, 3.0),)  # ← Más ratios
     )
     
     # ROI Pooling (convierte features de diferentes tamaños a tamaño fijo)

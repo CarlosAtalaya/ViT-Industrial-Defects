@@ -31,14 +31,14 @@ echo "PASO 1: ENTRENAMIENTO"
 echo "=========================================="
 echo ""
 
-# python3 train_efficientnet_fasterrcnn.py \
-#     --dataset-path "$DATASET_PATH" \
-#     --epochs $EPOCHS \
-#     --batch-size $BATCH_SIZE \
-#     --lr $LR \
-#     --num-workers $NUM_WORKERS \
-#     --pretrained-backbone \
-#     --output-dir results/training
+python3 train_efficientnet_fasterrcnn.py \
+    --dataset-path "$DATASET_PATH" \
+    --epochs $EPOCHS \
+    --batch-size $BATCH_SIZE \
+    --lr $LR \
+    --num-workers $NUM_WORKERS \
+    --pretrained-backbone \
+    --output-dir results/training
 
 # Encontrar el último directorio de experimento
 EXPERIMENT_DIR=$(ls -td results/training/efficientnet_b0_fasterrcnn_* | head -1)
