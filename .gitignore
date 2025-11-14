@@ -3,4 +3,6 @@ curated_dataset_splitted_20251101_provisional_1st_version/
 models/
 docs/
 scripts/efficientnet/results/
+scripts/efficientnet/__pycache__/
 scripts/resnet18/results/
+scripts/resnet18/__pycache__/
