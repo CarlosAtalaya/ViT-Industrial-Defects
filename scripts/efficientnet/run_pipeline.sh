@@ -67,7 +67,7 @@ python3 evaluate_model.py \
     --dataset-path "$DATASET_PATH" \
     --batch-size $BATCH_SIZE \
     --num-workers $NUM_WORKERS \
-    --score-threshold 0.5 \
+    --score-threshold 0.15 \
     --iou-threshold 0.5
 
 # 4. VISUALIZAR PREDICCIONES
@@ -83,7 +83,7 @@ python3 visualize_predictions.py \
     --split test \
     --num-images 30 \
     --random \
-    --score-threshold 0.5
+    --score-threshold 0.15
 
 echo ""
 echo "=========================================="
