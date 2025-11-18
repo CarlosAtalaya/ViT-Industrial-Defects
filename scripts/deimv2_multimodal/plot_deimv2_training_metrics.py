@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
 Script para visualizar métricas de entrenamiento de DEIMv2.
-Lee el log.txt de tensorboard y genera gráficas.
+Lee el log.txt en formato JSON y genera gráficas individuales.
+
+FORMATO UNIFORMADO: Una gráfica por archivo en carpeta training_metrics/
 """
 
 import os
-import re
+import json
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,193 +15,325 @@ import numpy as np
 
 def parse_training_log(log_file):
     """
-    Parsea el archivo log.txt de DEIMv2.
+    Parsea el archivo log.txt de DEIMv2 (formato JSON por línea).
     
     Returns:
         dict con listas de métricas por época
     """
     metrics = {
         'epoch': [],
+        'train_lr': [],
         'train_loss': [],
+        'train_loss_mal': [],
+        'train_loss_bbox': [],
+        'train_loss_giou': [],
+        'train_loss_fgl': [],
         'val_map': [],
-        'lr': [],
-        'loss_mal': [],
-        'loss_bbox': [],
-        'loss_giou': [],
+        'val_ap50': [],
+        'val_ap75': [],
     }
     
-    current_epoch = None
+    print(f"\nParsing log file: {log_file}")
     
     with open(log_file, 'r') as f:
-        for line in f:
-            # Detectar época
-            epoch_match = re.search(r'Epoch: \[(\d+)\]', line)
-            if epoch_match:
-                current_epoch = int(epoch_match.group(1))
+        for line_num, line in enumerate(f, 1):
+            line = line.strip()
+            if not line:
+                continue
             
-            # Loss total
-            if 'Averaged stats' in line:
-                loss_match = re.search(r'loss: [\d.]+\s+\(([\d.]+)\)', line)
-                if loss_match and current_epoch is not None:
-                    if current_epoch not in metrics['epoch']:
-                        metrics['epoch'].append(current_epoch)
-                        metrics['train_loss'].append(float(loss_match.group(1)))
+            try:
+                data = json.loads(line)
                 
-                # Otras pérdidas
-                mal_match = re.search(r'loss_mal: [\d.]+\s+\(([\d.]+)\)', line)
-                bbox_match = re.search(r'loss_bbox: [\d.]+\s+\(([\d.]+)\)', line)
-                giou_match = re.search(r'loss_giou: [\d.]+\s+\(([\d.]+)\)', line)
+                # Extraer época
+                epoch = data.get('epoch', None)
+                if epoch is None:
+                    continue
                 
-                if mal_match:
-                    metrics['loss_mal'].append(float(mal_match.group(1)))
-                if bbox_match:
-                    metrics['loss_bbox'].append(float(bbox_match.group(1)))
-                if giou_match:
-                    metrics['loss_giou'].append(float(giou_match.group(1)))
-            
-            # mAP de validación
-            if 'Average Precision  (AP) @[ IoU=0.50:0.95' in line:
-                map_match = re.search(r'= ([\d.]+)', line)
-                if map_match:
-                    metrics['val_map'].append(float(map_match.group(1)))
-            
-            # Learning rate
-            if 'lr:' in line and 'Epoch:' in line:
-                lr_match = re.search(r'lr: ([\d.e-]+)', line)
-                if lr_match:
-                    lr_val = float(lr_match.group(1))
-                    if len(metrics['lr']) < len(metrics['epoch']):
-                        metrics['lr'].append(lr_val)
+                metrics['epoch'].append(epoch)
+                
+                # Métricas de entrenamiento
+                metrics['train_lr'].append(data.get('train_lr', 0))
+                metrics['train_loss'].append(data.get('train_loss', 0))
+                metrics['train_loss_mal'].append(data.get('train_loss_mal', 0))
+                metrics['train_loss_bbox'].append(data.get('train_loss_bbox', 0))
+                metrics['train_loss_giou'].append(data.get('train_loss_giou', 0))
+                metrics['train_loss_fgl'].append(data.get('train_loss_fgl', 0))
+                
+                # Métricas de validación (test_coco_eval_bbox)
+                # Formato: [mAP, AP50, AP75, ...]
+                coco_eval = data.get('test_coco_eval_bbox', [])
+                if len(coco_eval) >= 3:
+                    metrics['val_map'].append(coco_eval[0])
+                    metrics['val_ap50'].append(coco_eval[1])
+                    metrics['val_ap75'].append(coco_eval[2])
+                else:
+                    metrics['val_map'].append(0)
+                    metrics['val_ap50'].append(0)
+                    metrics['val_ap75'].append(0)
+                
+            except json.JSONDecodeError as e:
+                print(f"⚠️  Error parsing line {line_num}: {e}")
+                continue
+    
+    print(f"✅ Parsed {len(metrics['epoch'])} epochs")
+    
+    # Verificar que hay datos
+    if len(metrics['epoch']) == 0:
+        raise ValueError("No se encontraron datos de épocas en el log")
     
     return metrics
 
 
-def plot_training_metrics(metrics, output_dir):
-    """Genera gráficas de métricas."""
+def plot_single_metric(epochs, data, ylabel, title, output_path, 
+                       color='blue', use_log_scale=False, mark_best=True):
+    """
+    Genera una gráfica individual para una métrica.
     
-    epochs = metrics['epoch']
+    Args:
+        epochs: Lista de épocas
+        data: Datos a plotear
+        ylabel: Etiqueta del eje Y
+        title: Título de la gráfica
+        output_path: Ruta donde guardar
+        color: Color de la línea
+        use_log_scale: Si True, usar escala logarítmica
+        mark_best: Si True, marcar mejor valor
+    """
+    fig, ax = plt.subplots(figsize=(10, 6))
     
-    # Figura principal
-    fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-    fig.suptitle('Métricas de Entrenamiento - DEIMv2', fontsize=16, fontweight='bold')
-    
-    # 1. Loss total
-    ax = axes[0, 0]
-    ax.plot(epochs, metrics['train_loss'], marker='o', linewidth=2, label='Train Loss')
-    ax.set_xlabel('Época', fontsize=12)
-    ax.set_ylabel('Pérdida', fontsize=12)
-    ax.set_title('Pérdida Total', fontsize=13, fontweight='bold')
-    ax.legend(fontsize=10)
-    ax.grid(True, alpha=0.3)
-    
-    # 2. mAP validación
-    ax = axes[0, 1]
-    if len(metrics['val_map']) > 0:
-        ax.plot(epochs[:len(metrics['val_map'])], metrics['val_map'], 
-                marker='s', linewidth=2, color='green', label='Val mAP')
-        ax.set_xlabel('Época', fontsize=12)
-        ax.set_ylabel('mAP', fontsize=12)
-        ax.set_title('mAP en Validación', fontsize=13, fontweight='bold')
-        ax.legend(fontsize=10)
-        ax.grid(True, alpha=0.3)
-    
-    # 3. Componentes de pérdida
-    ax = axes[1, 0]
-    if len(metrics['loss_mal']) > 0:
-        ax.plot(epochs, metrics['loss_mal'], marker='o', linewidth=2, label='MAL Loss')
-    if len(metrics['loss_bbox']) > 0:
-        ax.plot(epochs, metrics['loss_bbox'], marker='s', linewidth=2, label='BBox Loss')
-    if len(metrics['loss_giou']) > 0:
-        ax.plot(epochs, metrics['loss_giou'], marker='^', linewidth=2, label='GIoU Loss')
+    ax.plot(epochs, data, color=color, linewidth=2, 
+            marker='o', markersize=4, alpha=0.8)
     
     ax.set_xlabel('Época', fontsize=12)
-    ax.set_ylabel('Pérdida', fontsize=12)
-    ax.set_title('Componentes de Pérdida', fontsize=13, fontweight='bold')
-    ax.legend(fontsize=10)
+    ax.set_ylabel(ylabel, fontsize=12)
+    ax.set_title(title, fontsize=14, fontweight='bold')
     ax.grid(True, alpha=0.3)
     
-    # 4. Learning rate
-    ax = axes[1, 1]
-    if len(metrics['lr']) > 0:
-        ax.plot(epochs[:len(metrics['lr'])], metrics['lr'], 
-                marker='o', linewidth=2, color='purple')
-        ax.set_xlabel('Época', fontsize=12)
-        ax.set_ylabel('Learning Rate', fontsize=12)
-        ax.set_title('Learning Rate Schedule', fontsize=13, fontweight='bold')
+    if use_log_scale:
         ax.set_yscale('log')
-        ax.grid(True, alpha=0.3)
+    
+    # Marcar mejor valor (mínimo para loss, máximo para mAP)
+    if mark_best and len(data) > 0 and max(data) > 0:
+        if 'mAP' in title or 'AP' in title:
+            best_idx = np.argmax(data)
+            best_val = data[best_idx]
+            marker_color = 'green'
+            label = f'Best: {best_val:.4f} (Epoch {epochs[best_idx]})'
+        else:
+            best_idx = np.argmin(data)
+            best_val = data[best_idx]
+            marker_color = 'red'
+            label = f'Best: {best_val:.4f} (Epoch {epochs[best_idx]})'
+        
+        ax.plot(epochs[best_idx], best_val, '*', 
+                color=marker_color, markersize=15, label=label)
+        ax.legend(fontsize=10, loc='best')
     
     plt.tight_layout()
-    
-    # Guardar
-    save_path = os.path.join(output_dir, 'training_metrics.png')
-    plt.savefig(save_path, dpi=150, bbox_inches='tight')
-    print(f"\n✅ Gráfica guardada en: {save_path}")
-    
+    plt.savefig(output_path, dpi=150, bbox_inches='tight')
     plt.close()
+    
+    print(f"  ✓ Guardado: {os.path.basename(output_path)}")
+
+
+def plot_multiple_metrics(epochs, metrics_dict, ylabel, title, output_path):
+    """Genera gráfica comparativa de múltiples métricas."""
+    fig, ax = plt.subplots(figsize=(12, 6))
+    
+    colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown']
+    markers = ['o', 's', '^', 'd', 'v', 'p']
+    
+    for i, (name, data) in enumerate(metrics_dict.items()):
+        color = colors[i % len(colors)]
+        marker = markers[i % len(markers)]
+        ax.plot(epochs, data, label=name, color=color, 
+                linewidth=2, marker=marker, markersize=4, alpha=0.8)
+    
+    ax.set_xlabel('Época', fontsize=12)
+    ax.set_ylabel(ylabel, fontsize=12)
+    ax.set_title(title, fontsize=14, fontweight='bold')
+    ax.legend(fontsize=10, loc='best')
+    ax.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.close()
+    
+    print(f"  ✓ Guardado: {os.path.basename(output_path)}")
+
+
+def plot_training_metrics(log_path, base_output_dir):
+    """
+    Genera todas las gráficas de métricas.
+    
+    Args:
+        log_path: Ruta al log.txt
+        base_output_dir: Directorio base (se creará training_metrics/ dentro)
+    """
+    # Parsear log
+    metrics = parse_training_log(log_path)
+    epochs = metrics['epoch']
+    
+    # Crear directorio de salida
+    output_dir = os.path.join(base_output_dir, 'training_metrics')
+    os.makedirs(output_dir, exist_ok=True)
+    print(f"\nGuardando gráficas en: {output_dir}\n")
+    
+    print("Generando gráficas individuales...")
+    
+    # 1. Learning Rate
+    plot_single_metric(
+        epochs, metrics['train_lr'],
+        'Learning Rate', 'Learning Rate Schedule',
+        os.path.join(output_dir, '1_learning_rate.png'),
+        color='green', use_log_scale=True, mark_best=False
+    )
+    
+    # 2. Loss Total
+    plot_single_metric(
+        epochs, metrics['train_loss'],
+        'Loss', 'Pérdida Total de Entrenamiento',
+        os.path.join(output_dir, '2_total_loss.png'),
+        color='red', mark_best=True
+    )
+    
+    # 3. Loss MAL (Classification)
+    plot_single_metric(
+        epochs, metrics['train_loss_mal'],
+        'Loss', 'Pérdida de Clasificación (MAL)',
+        os.path.join(output_dir, '3_classification_loss.png'),
+        color='blue', mark_best=True
+    )
+    
+    # 4. Loss BBox (Regression)
+    plot_single_metric(
+        epochs, metrics['train_loss_bbox'],
+        'Loss', 'Pérdida de Regresión BBox',
+        os.path.join(output_dir, '4_bbox_regression_loss.png'),
+        color='orange', mark_best=True
+    )
+    
+    # 5. Loss GIoU
+    plot_single_metric(
+        epochs, metrics['train_loss_giou'],
+        'Loss', 'Pérdida GIoU',
+        os.path.join(output_dir, '5_giou_loss.png'),
+        color='purple', mark_best=True
+    )
+    
+    # 6. Loss Focal (FGL)
+    plot_single_metric(
+        epochs, metrics['train_loss_fgl'],
+        'Loss', 'Pérdida Focal Loss',
+        os.path.join(output_dir, '6_focal_loss.png'),
+        color='brown', mark_best=True
+    )
+    
+    # 7. Validation mAP
+    if len(metrics['val_map']) > 0 and max(metrics['val_map']) > 0:
+        plot_single_metric(
+            epochs, metrics['val_map'],
+            'mAP', 'Validation mAP @0.5:0.95',
+            os.path.join(output_dir, '7_validation_map.png'),
+            color='green', mark_best=True
+        )
+    
+    # 8. Validation AP50
+    if len(metrics['val_ap50']) > 0 and max(metrics['val_ap50']) > 0:
+        plot_single_metric(
+            epochs, metrics['val_ap50'],
+            'AP@0.5', 'Validation AP @0.5',
+            os.path.join(output_dir, '8_validation_ap50.png'),
+            color='blue', mark_best=True
+        )
+    
+    # 9. Validation AP75
+    if len(metrics['val_ap75']) > 0 and max(metrics['val_ap75']) > 0:
+        plot_single_metric(
+            epochs, metrics['val_ap75'],
+            'AP@0.75', 'Validation AP @0.75',
+            os.path.join(output_dir, '9_validation_ap75.png'),
+            color='red', mark_best=True
+        )
+    
+    # 10. Comparación de losses desglosadas
+    loss_components = {
+        'MAL (Classification)': metrics['train_loss_mal'],
+        'BBox Regression': metrics['train_loss_bbox'],
+        'GIoU': metrics['train_loss_giou'],
+        'Focal Loss': metrics['train_loss_fgl']
+    }
+    plot_multiple_metrics(
+        epochs, loss_components,
+        'Loss', 'Comparación de Componentes de Pérdida',
+        os.path.join(output_dir, '10_loss_components_comparison.png')
+    )
+    
+    # 11. Comparación de métricas de validación
+    if len(metrics['val_map']) > 0 and max(metrics['val_map']) > 0:
+        val_metrics = {
+            'mAP @0.5:0.95': metrics['val_map'],
+            'AP @0.5': metrics['val_ap50'],
+            'AP @0.75': metrics['val_ap75']
+        }
+        plot_multiple_metrics(
+            epochs, val_metrics,
+            'COCO mAP', 'Métricas de Validación',
+            os.path.join(output_dir, '11_validation_metrics_comparison.png')
+        )
     
     # Imprimir resumen
     print("\n" + "="*80)
     print("RESUMEN DE ENTRENAMIENTO")
     print("="*80)
-    print(f"Número de épocas: {len(epochs)}")
+    print(f"Total de épocas: {len(epochs)}")
+    print(f"Learning rate final: {metrics['train_lr'][-1]:.2e}")
+    print(f"Loss final: {metrics['train_loss'][-1]:.4f}")
     
-    if len(metrics['train_loss']) > 0:
-        print(f"\nPérdida inicial: {metrics['train_loss'][0]:.4f}")
-        print(f"Pérdida final: {metrics['train_loss'][-1]:.4f}")
-    
-    if len(metrics['val_map']) > 0:
-        best_map = max(metrics['val_map'])
-        best_epoch = metrics['val_map'].index(best_map)
-        print(f"\nMejor mAP: {best_map:.4f} (época {epochs[best_epoch]})")
-    
-    if len(metrics['lr']) > 0:
-        print(f"\nLearning rate inicial: {metrics['lr'][0]:.6f}")
-        print(f"Learning rate final: {metrics['lr'][-1]:.6f}")
+    if len(metrics['val_map']) > 0 and max(metrics['val_map']) > 0:
+        best_idx = np.argmax(metrics['val_map'])
+        print(f"\nMejor validación:")
+        print(f"  Época: {epochs[best_idx]}")
+        print(f"  mAP @0.5:0.95: {metrics['val_map'][best_idx]:.4f}")
+        print(f"  AP @0.5: {metrics['val_ap50'][best_idx]:.4f}")
+        print(f"  AP @0.75: {metrics['val_ap75'][best_idx]:.4f}")
     
     print("="*80)
 
 
 def main(args):
     """Función principal."""
-    
     print("="*80)
-    print("VISUALIZACIÓN DE MÉTRICAS - DEIMV2")
+    print("VISUALIZACIÓN DE MÉTRICAS DE ENTRENAMIENTO")
+    print("DEIMv2 + DINOv3")
     print("="*80)
     
-    # Buscar log file
-    if os.path.isfile(args.log_path):
-        log_file = args.log_path
-        output_dir = os.path.dirname(log_file)
-    elif os.path.isdir(args.log_path):
-        log_file = os.path.join(args.log_path, 'log.txt')
-        output_dir = args.log_path
-    else:
-        raise ValueError(f"Ruta no válida: {args.log_path}")
-    
-    if not os.path.exists(log_file):
-        raise FileNotFoundError(f"No se encontró log.txt en: {log_file}")
-    
-    print(f"\nCargando log desde: {log_file}")
-    
-    # Parsear métricas
-    metrics = parse_training_log(log_file)
-    
-    if len(metrics['epoch']) == 0:
-        print("⚠️  No se encontraron métricas en el log")
+    # Verificar archivo
+    if not os.path.exists(args.log_path):
+        print(f"\n❌ ERROR: No se encontró el archivo: {args.log_path}")
         return
     
-    # Generar gráficas
-    plot_training_metrics(metrics, output_dir)
+    # Directorio de salida
+    output_dir = os.path.dirname(args.log_path) if not args.output_dir else args.output_dir
     
-    print("\n✓ Visualización completada")
+    # Generar gráficas
+    try:
+        plot_training_metrics(args.log_path, output_dir)
+        print(f"\n✅ Visualización completada")
+        print(f"📁 Gráficas guardadas en: {os.path.join(output_dir, 'training_metrics/')}")
+    except Exception as e:
+        print(f"\n❌ ERROR: {e}")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Visualizar métricas de DEIMv2')
+    parser = argparse.ArgumentParser(
+        description='Visualizar métricas de entrenamiento de DEIMv2 (formato uniformado)'
+    )
     
     parser.add_argument('--log-path', type=str, required=True,
-                       help='Ruta al log.txt o directorio que lo contiene')
+                       help='Ruta al archivo log.txt')
+    parser.add_argument('--output-dir', type=str, default=None,
+                       help='Directorio de salida (default: mismo que log.txt)')
     
     args = parser.parse_args()
     main(args)

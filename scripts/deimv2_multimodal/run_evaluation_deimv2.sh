@@ -3,12 +3,14 @@
 # =============================================================================
 # PIPELINE COMPLETO DE EVALUACIÓN PARA DEIMV2
 # Detección de Defectos Industriales con Vision Transformers
+# 
+# ACTUALIZADO: Usa evaluate_deimv2_comparable.py para métricas comparables
 # =============================================================================
 
 set -e  # Salir si hay error
 
 echo "================================================================================"
-echo "  PIPELINE DE EVALUACIÓN - DEIMV2 INDUSTRIAL"
+echo "  PIPELINE DE EVALUACIÓN - DEIMV2 INDUSTRIAL (COMPARABLE CON BASELINES)"
 echo "================================================================================"
 echo ""
 
@@ -27,6 +29,10 @@ TEST_ANN_FILE="${DATASET_PATH}/test/test.json"
 
 # Configuración de entrenamiento
 CONFIG_FILE="${SCRIPT_DIR}/configs/deimv2_industrial_defects.yml"
+
+# Thresholds de evaluación (ajusta según necesites)
+SCORE_THRESHOLD=0.15  # Mismo que baselines CNN
+IOU_THRESHOLD=0.5     # IoU estándar
 
 # Buscar último checkpoint (o especificar manualmente)
 if [ -z "$1" ]; then
@@ -64,10 +70,20 @@ else
     # Usar checkpoint especificado
     CHECKPOINT="$1"
     EXPERIMENT_DIR="$(dirname "$CHECKPOINT")"
+    
+    # Permitir override de thresholds
+    if [ ! -z "$2" ]; then
+        SCORE_THRESHOLD="$2"
+    fi
+    if [ ! -z "$3" ]; then
+        IOU_THRESHOLD="$3"
+    fi
 fi
 
 echo "📁 Directorio de experimento: $EXPERIMENT_DIR"
 echo "💾 Checkpoint: $CHECKPOINT"
+echo "📊 Score threshold: $SCORE_THRESHOLD"
+echo "📐 IoU threshold: $IOU_THRESHOLD"
 echo ""
 
 # Verificar archivos necesarios
@@ -108,24 +124,27 @@ LOG_FILE="${EXPERIMENT_DIR}/log.txt"
 
 if [ -f "$LOG_FILE" ]; then
     python3 "${SCRIPT_DIR}/plot_deimv2_training_metrics.py" \
-        --log-path "$LOG_FILE"
+        --log-path "$LOG_FILE" \
+        --output-dir "$EXPERIMENT_DIR"
     echo ""
 else
     echo "⚠️  Log de entrenamiento no encontrado, saltando visualización"
     echo ""
 fi
 
-# 2. EVALUACIÓN EN TEST SET
+# 2. EVALUACIÓN EN TEST SET (MÉTRICAS COMPARABLES)
 echo "================================================================================"
-echo "PASO 2: EVALUACIÓN EN TEST SET (COCO mAP)"
+echo "PASO 2: EVALUACIÓN EN TEST SET (MÉTRICAS COMPARABLES CON BASELINES)"
 echo "================================================================================"
 echo ""
 
-python3 "${SCRIPT_DIR}/evaluate_deimv2.py" \
+python3 "${SCRIPT_DIR}/evaluate_deimv2_comparable.py" \
     --checkpoint "$CHECKPOINT" \
     --config "$CONFIG_FILE" \
     --test-img-folder "$TEST_IMG_FOLDER" \
-    --test-ann-file "$TEST_ANN_FILE"
+    --test-ann-file "$TEST_ANN_FILE" \
+    --score-threshold "$SCORE_THRESHOLD" \
+    --iou-threshold "$IOU_THRESHOLD"
 
 echo ""
 
@@ -142,7 +161,7 @@ python3 "${SCRIPT_DIR}/visualize_deimv2_predictions.py" \
     --ann-file "$TEST_ANN_FILE" \
     --num-images 30 \
     --random \
-    --score-threshold 0.75
+    --score-threshold "$SCORE_THRESHOLD"
 
 echo ""
 
@@ -158,25 +177,53 @@ echo "Resultados guardados en: $EXPERIMENT_DIR"
 echo ""
 echo "Archivos generados:"
 echo "  📊 training_metrics.png - Gráficas de entrenamiento"
-echo "  📈 test_evaluation_results.json - Métricas mAP en test"
+echo "  📈 test_evaluation_results_comparable.json - Métricas comparables con baselines"
+echo "  🗂️  test_detections_filtered.json - Detecciones filtradas (score >= $SCORE_THRESHOLD)"
 echo "  🖼️  visualizations_test/ - Predicciones visualizadas"
 echo ""
 
 # Mostrar métricas si existen
-RESULTS_FILE="${EXPERIMENT_DIR}/test_evaluation_results.json"
+RESULTS_FILE="${EXPERIMENT_DIR}/test_evaluation_results_comparable.json"
 if [ -f "$RESULTS_FILE" ]; then
-    echo "Métricas de Test:"
+    echo "Métricas de Test (Comparables con ResNet/EfficientNet):"
     python3 -c "
 import json
 with open('$RESULTS_FILE') as f:
     data = json.load(f)
-    print(f\"  mAP@0.50:0.95: {data['metrics']['mAP']:.4f}\")
-    print(f\"  AP@0.50:      {data['metrics']['AP50']:.4f}\")
-    print(f\"  AP@0.75:      {data['metrics']['AP75']:.4f}\")
+    print(f\"  mAP (IoU=${IOU_THRESHOLD}): {data['mAP']:.4f}\")
+    print(f\"  Score threshold: {data['score_threshold']}\")
+    print(f\"  IoU threshold: {data['iou_threshold']}\")
+    print(f\"\\n  Métricas por clase:\")
+    for cls, ap in data['AP_per_class'].items():
+        prec = data['precision_per_class'][cls]
+        rec = data['recall_per_class'][cls]
+        print(f\"    {cls}: AP={ap:.4f}, Prec={prec:.4f}, Rec={rec:.4f}\")
 "
 fi
 
 echo ""
-echo "Para ejecutar de nuevo con otro checkpoint:"
-echo "  ./run_evaluation_deimv2.sh /ruta/al/checkpoint.pth"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "OPCIONES DE USO:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
+echo "1. Evaluar con checkpoint específico:"
+echo "   ./run_evaluation_deimv2.sh /ruta/al/checkpoint.pth"
+echo ""
+echo "2. Evaluar con thresholds personalizados:"
+echo "   ./run_evaluation_deimv2.sh /ruta/al/checkpoint.pth 0.25 0.5"
+echo "   (Formato: checkpoint score_threshold iou_threshold)"
+echo ""
+echo "3. Recalcular métricas desde detecciones ya guardadas:"
+echo "   python recalculate_metrics_from_detections.py \\"
+echo "     --detections-file $EXPERIMENT_DIR/test_detections.json \\"
+echo "     --ann-file $TEST_ANN_FILE \\"
+echo "     --score-threshold 0.20 \\"
+echo "     --iou-threshold 0.5"
+echo ""
+echo "4. Comparar múltiples thresholds (sin re-ejecutar inferencia):"
+echo "   python recalculate_metrics_from_detections.py \\"
+echo "     --detections-file $EXPERIMENT_DIR/test_detections.json \\"
+echo "     --ann-file $TEST_ANN_FILE \\"
+echo "     --compare-thresholds"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
