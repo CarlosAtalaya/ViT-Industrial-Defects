@@ -1,16 +1,14 @@
 #!/bin/bash
 
 # =============================================================================
-# PIPELINE COMPLETO DE EVALUACIÓN PARA DEIMV2
-# Detección de Defectos Industriales con Vision Transformers
-# 
-# ACTUALIZADO: Usa evaluate_deimv2_comparable.py para métricas comparables
+# PIPELINE COMPLETO DE EVALUACIÓN PARA DEIMV2 - VERSIÓN ACTUALIZADA
+# Detección de Defectos Industriales con Vision Transformers @ 1024×1024
 # =============================================================================
 
 set -e  # Salir si hay error
 
 echo "================================================================================"
-echo "  PIPELINE DE EVALUACIÓN - DEIMV2 INDUSTRIAL (COMPARABLE CON BASELINES)"
+echo "  PIPELINE DE EVALUACIÓN - DEIMV2 INDUSTRIAL (1024×1024)"
 echo "================================================================================"
 echo ""
 
@@ -27,14 +25,13 @@ DATASET_PATH="${PROJECT_ROOT}/curated_dataset_splitted_20251101_provisional_1st_
 TEST_IMG_FOLDER="${DATASET_PATH}/test/images"
 TEST_ANN_FILE="${DATASET_PATH}/test/test.json"
 
-# Configuración de entrenamiento
+# Configuración de entrenamiento (con resolución 1024×1024)
 CONFIG_FILE="${SCRIPT_DIR}/configs/deimv2_industrial_defects.yml"
 
-# Thresholds de evaluación (ajusta según necesites)
-SCORE_THRESHOLD=0.15  # Mismo que baselines CNN
-IOU_THRESHOLD=0.5     # IoU estándar
+# -----------------------------------------------------------------------------
+# BUSCAR CHECKPOINT
+# -----------------------------------------------------------------------------
 
-# Buscar último checkpoint (o especificar manualmente)
 if [ -z "$1" ]; then
     # Buscar automáticamente el último checkpoint
     OUTPUT_BASE="${SCRIPT_DIR}/outputs"
@@ -44,8 +41,11 @@ if [ -z "$1" ]; then
         exit 1
     fi
     
-    # Buscar el checkpoint más reciente
-    LATEST_RUN=$(ls -td ${OUTPUT_BASE}/deimv2_industrial_run* 2>/dev/null | head -1)
+    echo "🔍 Buscando último experimento..."
+    echo ""
+    
+    # Buscar el run más reciente (prioriza runs con 1024 en el nombre)
+    LATEST_RUN=$(ls -td ${OUTPUT_BASE}/deimv2_1024* ${OUTPUT_BASE}/deimv2_*_run* 2>/dev/null | head -1)
     
     if [ -z "$LATEST_RUN" ]; then
         echo "❌ ERROR: No se encontraron runs de entrenamiento"
@@ -53,40 +53,43 @@ if [ -z "$1" ]; then
         exit 1
     fi
     
-    # Buscar checkpoint_best.pth o el último checkpoint
-    if [ -f "${LATEST_RUN}/checkpoint_best.pth" ]; then
-        CHECKPOINT="${LATEST_RUN}/checkpoint_best.pth"
+    echo "📂 Experimento encontrado: $(basename $LATEST_RUN)"
+    
+    # Buscar el mejor checkpoint (prioridad: best_stg1.pth > checkpoint0080.pth > último)
+    if [ -f "${LATEST_RUN}/best_stg1.pth" ]; then
+        CHECKPOINT="${LATEST_RUN}/best_stg1.pth"
+        echo "✓ Usando best_stg1.pth (mejor mAP en validación)"
+    elif [ -f "${LATEST_RUN}/checkpoint0080.pth" ]; then
+        CHECKPOINT="${LATEST_RUN}/checkpoint0080.pth"
+        echo "✓ Usando checkpoint0080.pth (última época)"
     else
         CHECKPOINT=$(ls -t ${LATEST_RUN}/checkpoint*.pth 2>/dev/null | head -1)
-    fi
-    
-    if [ -z "$CHECKPOINT" ] || [ ! -f "$CHECKPOINT" ]; then
-        echo "❌ ERROR: No se encontró checkpoint en $LATEST_RUN"
-        exit 1
+        if [ -z "$CHECKPOINT" ]; then
+            echo "❌ ERROR: No se encontró checkpoint en $LATEST_RUN"
+            exit 1
+        fi
+        echo "✓ Usando: $(basename $CHECKPOINT)"
     fi
     
     EXPERIMENT_DIR="$LATEST_RUN"
 else
-    # Usar checkpoint especificado
+    # Usar checkpoint especificado manualmente
     CHECKPOINT="$1"
     EXPERIMENT_DIR="$(dirname "$CHECKPOINT")"
-    
-    # Permitir override de thresholds
-    if [ ! -z "$2" ]; then
-        SCORE_THRESHOLD="$2"
-    fi
-    if [ ! -z "$3" ]; then
-        IOU_THRESHOLD="$3"
-    fi
+    echo "💾 Usando checkpoint especificado: $CHECKPOINT"
 fi
 
+echo ""
 echo "📁 Directorio de experimento: $EXPERIMENT_DIR"
-echo "💾 Checkpoint: $CHECKPOINT"
-echo "📊 Score threshold: $SCORE_THRESHOLD"
-echo "📐 IoU threshold: $IOU_THRESHOLD"
+echo "💾 Checkpoint: $(basename $CHECKPOINT)"
 echo ""
 
-# Verificar archivos necesarios
+# -----------------------------------------------------------------------------
+# VERIFICAR ARCHIVOS NECESARIOS
+# -----------------------------------------------------------------------------
+
+echo "🔍 Verificando archivos..."
+
 if [ ! -f "$CHECKPOINT" ]; then
     echo "❌ ERROR: Checkpoint no encontrado: $CHECKPOINT"
     exit 1
@@ -111,10 +114,26 @@ echo "✅ Verificación de archivos completada"
 echo ""
 
 # -----------------------------------------------------------------------------
+# EXTRAER INFO DEL CHECKPOINT
+# -----------------------------------------------------------------------------
+
+# Intentar extraer época del nombre del checkpoint
+CHECKPOINT_NAME=$(basename "$CHECKPOINT")
+if [[ $CHECKPOINT_NAME =~ checkpoint([0-9]+) ]]; then
+    EPOCH="${BASH_REMATCH[1]}"
+    echo "📊 Checkpoint de época: $EPOCH"
+elif [[ $CHECKPOINT_NAME == "best_stg1.pth" ]]; then
+    echo "📊 Checkpoint: Mejor modelo (validación)"
+else
+    echo "📊 Checkpoint: Desconocido"
+fi
+echo ""
+
+# -----------------------------------------------------------------------------
 # PIPELINE DE EVALUACIÓN
 # -----------------------------------------------------------------------------
 
-# 1. VISUALIZAR MÉTRICAS DE ENTRENAMIENTO
+# PASO 1: VISUALIZAR MÉTRICAS DE ENTRENAMIENTO
 echo "================================================================================"
 echo "PASO 1: VISUALIZAR MÉTRICAS DE ENTRENAMIENTO"
 echo "================================================================================"
@@ -123,37 +142,41 @@ echo ""
 LOG_FILE="${EXPERIMENT_DIR}/log.txt"
 
 if [ -f "$LOG_FILE" ]; then
+    echo "📈 Generando gráficas de training..."
     python3 "${SCRIPT_DIR}/plot_deimv2_training_metrics.py" \
-        --log-path "$LOG_FILE" \
-        --output-dir "$EXPERIMENT_DIR"
+        --log-path "$LOG_FILE" 2>/dev/null || echo "⚠️  Error al generar gráficas (puede requerir actualización del parser)"
     echo ""
 else
     echo "⚠️  Log de entrenamiento no encontrado, saltando visualización"
     echo ""
 fi
 
-# 2. EVALUACIÓN EN TEST SET (MÉTRICAS COMPARABLES)
+# PASO 2: EVALUACIÓN EN TEST SET
 echo "================================================================================"
-echo "PASO 2: EVALUACIÓN EN TEST SET (MÉTRICAS COMPARABLES CON BASELINES)"
+echo "PASO 2: EVALUACIÓN EN TEST SET (Protocolo COCO)"
 echo "================================================================================"
 echo ""
+echo "🔬 Evaluando modelo en test set (205 imágenes)..."
+echo "⏱️  Esto puede tomar 1-2 minutos..."
+echo ""
 
-python3 "${SCRIPT_DIR}/evaluate_deimv2_comparable.py" \
+python3 "${SCRIPT_DIR}/evaluate_deimv2.py" \
     --checkpoint "$CHECKPOINT" \
     --config "$CONFIG_FILE" \
     --test-img-folder "$TEST_IMG_FOLDER" \
-    --test-ann-file "$TEST_ANN_FILE" \
-    --score-threshold "$SCORE_THRESHOLD" \
-    --iou-threshold "$IOU_THRESHOLD"
+    --test-ann-file "$TEST_ANN_FILE"
 
 echo ""
 
-# 3. VISUALIZAR PREDICCIONES
+# PASO 3: VISUALIZAR PREDICCIONES
 echo "================================================================================"
 echo "PASO 3: VISUALIZAR PREDICCIONES EN TEST"
 echo "================================================================================"
 echo ""
+echo "🖼️  Generando visualizaciones de predicciones..."
+echo ""
 
+# Generar visualizaciones con diferentes thresholds
 python3 "${SCRIPT_DIR}/visualize_deimv2_predictions.py" \
     --checkpoint "$CHECKPOINT" \
     --config "$CONFIG_FILE" \
@@ -161,7 +184,7 @@ python3 "${SCRIPT_DIR}/visualize_deimv2_predictions.py" \
     --ann-file "$TEST_ANN_FILE" \
     --num-images 30 \
     --random \
-    --score-threshold "$SCORE_THRESHOLD"
+    --score-threshold 0.15
 
 echo ""
 
@@ -173,57 +196,89 @@ echo "==========================================================================
 echo "  ✅ PIPELINE DE EVALUACIÓN COMPLETADO"
 echo "================================================================================"
 echo ""
-echo "Resultados guardados en: $EXPERIMENT_DIR"
+echo "📂 Resultados guardados en: $EXPERIMENT_DIR"
 echo ""
-echo "Archivos generados:"
-echo "  📊 training_metrics.png - Gráficas de entrenamiento"
-echo "  📈 test_evaluation_results_comparable.json - Métricas comparables con baselines"
-echo "  🗂️  test_detections_filtered.json - Detecciones filtradas (score >= $SCORE_THRESHOLD)"
-echo "  🖼️  visualizations_test/ - Predicciones visualizadas"
+echo "📁 Archivos generados:"
+echo "  📊 training_metrics.png           - Gráficas de entrenamiento (si disponible)"
+echo "  📈 test_evaluation_results.json   - Métricas mAP en test"
+echo "  🖼️  visualizations_test/          - Predicciones visualizadas (30 imágenes)"
 echo ""
 
 # Mostrar métricas si existen
-RESULTS_FILE="${EXPERIMENT_DIR}/test_evaluation_results_comparable.json"
+RESULTS_FILE="${EXPERIMENT_DIR}/test_evaluation_results.json"
 if [ -f "$RESULTS_FILE" ]; then
-    echo "Métricas de Test (Comparables con ResNet/EfficientNet):"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  📊 MÉTRICAS FINALES EN TEST SET"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
     python3 -c "
 import json
-with open('$RESULTS_FILE') as f:
-    data = json.load(f)
-    print(f\"  mAP (IoU=${IOU_THRESHOLD}): {data['mAP']:.4f}\")
-    print(f\"  Score threshold: {data['score_threshold']}\")
-    print(f\"  IoU threshold: {data['iou_threshold']}\")
-    print(f\"\\n  Métricas por clase:\")
-    for cls, ap in data['AP_per_class'].items():
-        prec = data['precision_per_class'][cls]
-        rec = data['recall_per_class'][cls]
-        print(f\"    {cls}: AP={ap:.4f}, Prec={prec:.4f}, Rec={rec:.4f}\")
+import sys
+
+try:
+    with open('$RESULTS_FILE') as f:
+        data = json.load(f)
+    
+    metrics = data.get('metrics', {})
+    
+    print('  Métricas Principales:')
+    print(f\"    mAP@0.50:0.95:  {metrics.get('mAP', 0):.4f}  (39.5% es baseline con 640px)\")
+    print(f\"    AP@0.50:        {metrics.get('AP50', 0):.4f}  (49.9% es baseline con 640px)\")
+    print(f\"    AP@0.75:        {metrics.get('AP75', 0):.4f}  (38.4% es baseline con 640px)\")
+    print()
+    
+    if 'AP_small' in metrics:
+        print('  Métricas por Tamaño:')
+        print(f\"    AP Small:       {metrics.get('AP_small', 0):.4f}  (objetos < 32²)\")
+        print(f\"    AP Medium:      {metrics.get('AP_medium', 0):.4f}  (objetos 32²-96²)\")
+        print(f\"    AP Large:       {metrics.get('AP_large', 0):.4f}  (objetos > 96²)\")
+        print()
+    
+    if 'Recall' in metrics:
+        print('  Recall:')
+        print(f\"    AR@100:         {metrics.get('Recall', 0):.4f}\")
+        print()
+    
+    # Comparación con baseline
+    baseline_map = 0.395
+    current_map = metrics.get('mAP', 0)
+    improvement = ((current_map - baseline_map) / baseline_map) * 100 if baseline_map > 0 else 0
+    
+    print('  Comparación vs Baseline (640px):')
+    if improvement > 0:
+        print(f\"    Mejora: +{improvement:.1f}% 🚀\")
+    elif improvement < 0:
+        print(f\"    Diferencia: {improvement:.1f}%\")
+    else:
+        print(f\"    Similar al baseline\")
+    print()
+    
+except Exception as e:
+    print(f\"⚠️  Error al leer métricas: {e}\", file=sys.stderr)
 "
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+else
+    echo "⚠️  Archivo de resultados no encontrado"
 fi
 
 echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "OPCIONES DE USO:"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  💡 SIGUIENTES PASOS"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "1. Evaluar con checkpoint específico:"
+echo "1. Revisar visualizaciones:"
+echo "   cd $EXPERIMENT_DIR/visualizations_test"
+echo "   # Ver predicciones para analizar errores"
+echo ""
+echo "2. Comparar con baselines CNN:"
+echo "   cd scripts/resnet18"
+echo "   python evaluate_model.py --checkpoint ... --score-threshold 0.5"
+echo ""
+echo "3. Si resultados son buenos (mAP ≥ 0.45):"
+echo "   - Documentar en TFG"
+echo "   - Proceder con FASE 2 (extensión multimodal)"
+echo ""
+echo "4. Para re-evaluar con otro checkpoint:"
 echo "   ./run_evaluation_deimv2.sh /ruta/al/checkpoint.pth"
 echo ""
-echo "2. Evaluar con thresholds personalizados:"
-echo "   ./run_evaluation_deimv2.sh /ruta/al/checkpoint.pth 0.25 0.5"
-echo "   (Formato: checkpoint score_threshold iou_threshold)"
-echo ""
-echo "3. Recalcular métricas desde detecciones ya guardadas:"
-echo "   python recalculate_metrics_from_detections.py \\"
-echo "     --detections-file $EXPERIMENT_DIR/test_detections.json \\"
-echo "     --ann-file $TEST_ANN_FILE \\"
-echo "     --score-threshold 0.20 \\"
-echo "     --iou-threshold 0.5"
-echo ""
-echo "4. Comparar múltiples thresholds (sin re-ejecutar inferencia):"
-echo "   python recalculate_metrics_from_detections.py \\"
-echo "     --detections-file $EXPERIMENT_DIR/test_detections.json \\"
-echo "     --ann-file $TEST_ANN_FILE \\"
-echo "     --compare-thresholds"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

@@ -77,7 +77,7 @@ def evaluate_on_test(model, cfg, device, ann_file, img_folder, score_threshold=0
     from PIL import Image
     
     transform = T.Compose([
-        # T.Resize([640, 640]),
+        T.Resize([1024, 1024]),
         T.ToTensor(),
         T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
