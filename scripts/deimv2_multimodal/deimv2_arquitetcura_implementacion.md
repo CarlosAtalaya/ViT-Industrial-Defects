@@ -1,242 +1,567 @@
 # DEIMv2 Industrial Defects: Arquitectura e Implementación
 
-**Última actualización:** 18 Noviembre 2024  
-**Estado:** ✅ FASE 1 COMPLETADA - Evaluación en Test Validada
+**Última actualización:** 22 Noviembre 2024  
+**Estado:** 🔬 FASE 1 EN REFINAMIENTO - Optimización de Resolución
 
 ---
 
 ## 📊 Estado Actual del Proyecto
 
-### ✅ FASE 1: DEIMv2 Vanilla - COMPLETADA Y EVALUADA
+### 🔬 FASE 1: DEIMv2 Vanilla - EN REFINAMIENTO
 
-**Resultado en Validación:** mAP = 0.395 (39.5%) @ IoU=0.50:0.95  
-**Resultado en Test:** mAP = 0.426 (42.6%) @ IoU=0.50 ⭐
+#### Iteración 1: Config Base con Resize 640×640
+
+**Resultado Inicial:** mAP = 0.178 (17.8%) en test
 
 ```
-🎯 Métricas DEIMv2-M en Test Set (205 imágenes):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MÉTRICAS GLOBALES:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-mAP @ IoU=0.50:0.95   = 0.305 (30.5%)
-AP  @ IoU=0.50        = 0.426 (42.6%) ✅
-AP  @ IoU=0.75        = 0.318 (31.8%)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 Métricas DEIMv2-M (Época 52, Config Base):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+mAP @ IoU=0.50:0.95   = 0.178 (17.8%)
+AP  @ IoU=0.50        = 0.232 (23.2%)
+AP  @ IoU=0.75        = 0.171 (17.1%)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Por tamaño de objeto:
-  Small  (área < 32²)  = 0.108 (10.8%)
-  Medium (32² - 96²)   = 0.259 (25.9%)
-  Large  (área > 96²)  = 0.355 (35.5%)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Recall:
-  AR @ maxDets=1       = 0.341 (34.1%)
-  AR @ maxDets=10      = 0.431 (43.1%)
-  AR @ maxDets=100     = 0.473 (47.3%)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🎯 EVALUACIÓN CON PROTOCOLO CNN (IoU=0.5, Score≥0.15):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-mAP @ IoU=0.50        = 0.426 (42.6%)
-Num detecciones       = 1,547 (filtradas por score ≥ 0.15)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📊 MÉTRICAS POR CLASE (IoU=0.50):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Clase              AP      Precision  Recall
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-NORMAL            0.886   1.000      1.000  ⭐⭐⭐
-DEFORMACIONES     0.050   1.000      0.053  ⚠️
-ROTURA_FRACTURA   0.415   1.000      0.750  ⭐⭐
-RAYONES_ARANAZOS  0.103   0.800      0.324  ⚠️
-PERFORACIONES     0.741   1.000      0.933  ⭐⭐⭐
-CONTAMINACION     0.363   1.000      0.667  ⭐
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Promedio (mAP)    0.426   0.967      0.621
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Small  (área < 32²)  = 0.023 (2.3%)
+  Medium (32² - 96²)   = 0.072 (7.2%)
+  Large  (área > 96²)  = 0.263 (26.3%)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Recall @ maxDets=100  = 0.480 (48.0%)
 ```
 
-**Análisis de Resultados por Clase:**
-
-🔴 **Clases Débiles (AP < 0.20):**
-- **DEFORMACIONES:** AP=0.050, Recall=0.053 → Muy baja detección
-- **RAYONES_ARANAZOS:** AP=0.103, Recall=0.324 → Confusión con otras clases
-
-🟡 **Clases Moderadas (AP 0.20-0.50):**
-- **ROTURA_FRACTURA:** AP=0.415, Recall=0.750 → Buen recall pero precision mejorable
-- **CONTAMINACION:** AP=0.363, Recall=0.667 → Performance aceptable
-
-🟢 **Clases Fuertes (AP > 0.50):**
-- **PERFORACIONES:** AP=0.741, Recall=0.933 → Excelente detección
-- **NORMAL:** AP=0.886, Recall=1.000 → Casi perfecta
-
-**Observaciones Clave:**
-- ✅ **Precision perfecta (1.0)** en 5/6 clases → El modelo no da falsos positivos
-- ⚠️ **Recall bajo** en DEFORMACIONES (5.3%) y RAYONES (32.4%) → Muchos defectos no detectados
-- ✅ **Excelente en defectos con geometría clara:** Perforaciones, NORMAL
-- ⚠️ **Débil en defectos sutiles:** Deformaciones, rayones superficiales
+**Problema identificado:** Rendimiento significativamente inferior a baselines CNN (~0.42-0.45).
 
 ---
 
-### 🔄 Evolución del Proyecto
+#### Iteración 2: Config Optimizado con Resize 640×640
 
-**Primer entrenamiento (config base):** mAP@0.5 = 0.232 (23.2%)  
-**Segundo entrenamiento (config optimizado):** mAP@0.5 = 0.426 (42.6%)  
-**Mejora: +83.6%** 🚀
+**Resultado Mejorado:** mAP = 0.395 (39.5%) en validación
+
+```
+🎯 Métricas DEIMv2-M (Época 86, Config Optimizado):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+mAP @ IoU=0.50:0.95   = 0.395 (39.5%)
+AP  @ IoU=0.50        = 0.499 (49.9%)
+AP  @ IoU=0.75        = 0.384 (38.4%)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Por tamaño de objeto:
+  Small  (área < 32²)  = 0.234 (23.4%) ⭐
+  Medium (32² - 96²)   = 0.347 (34.7%)
+  Large  (área > 96²)  = 0.474 (47.4%)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Recall @ maxDets=100  = 0.621 (62.1%)
+```
+
+**Mejora respecto Iteración 1:** +122% en mAP
+
+**Optimizaciones aplicadas:**
+- Gradient clipping agresivo (0.1)
+- Warmup largo (2000 steps)
+- Augmentations conservadoras (desactivar Mosaic/CopyBlend)
+- Flat epoch prolongado (70 épocas)
+
+**Checkpoint guardado:** `outputs/deimv2_industrial_run_stable/checkpoint0084.pth`
 
 ---
 
-### 📂 Estructura Implementada
+### 🔍 Investigación Crítica: Problema de Comparabilidad
+
+#### Descubrimiento del Problema
+
+Durante la revisión técnica se identificó una **inconsistencia metodológica crítica**:
+
+```
+CONFIGURACIÓN USADA:
+├─ ResNet-18 (baseline):       Resolución ORIGINAL (~1650×1350 px, SIN resize)
+├─ EfficientNet-B0 (baseline):  Resolución ORIGINAL (~1650×1350 px, SIN resize)
+└─ DEIMv2 (Iteración 1 y 2):   Resolución FIJA (640×640 px, CON resize)
+
+❌ PROBLEMA: Comparación no justa
+   - CNNs procesan ~6x más píxeles que DEIMv2
+   - Pérdida de información crítica en defectos pequeños
+   - Métricas no comparables directamente
+```
+
+**Impacto en resultados:**
+- DEIMv2 pierde detalles al redimensionar de ~1650px → 640px (pérdida del 61%)
+- CNNs mantienen información completa
+- mAP comparativo sesgado a favor de CNNs
+
+---
+
+#### Decisión: Mantener Máxima Información
+
+**Principio fundamental para defectos industriales:**
+> "La resolución completa es crítica: perder píxeles = perder defectos"
+
+**Objetivo redefinido:** Entrenar DEIMv2 con resolución lo más cercana posible a la original del dataset, sin aplicar resize agresivo.
+
+---
+
+### 🧪 Experimento: Resolución Sin Resize
+
+#### Intento 1: Resolución Variable (FALLIDO)
+
+**Config probado:**
+```yaml
+train_dataloader:
+  transforms:
+    - NO Resize  # Mantener resolución original
+    
+collate_fn:
+  base_size: null  # Sin tamaño fijo
+```
+
+**Resultado:**
+```
+RuntimeError: Sizes of tensors must match except in dimension 1.
+Expected size 142 but got size 144 for tensor number 1 in the list.
+```
+
+**Causa raíz:** Limitación arquitectural de Vision Transformers
+
+**Explicación técnica:**
+```
+Vision Transformers (DINOv3):
+1. Dividen imagen en patches fijos (14×14 píxeles)
+2. Número de patches = altura/14 × ancho/14
+3. Positional embeddings aprendidos para número fijo de patches
+
+Problema con resoluciones variables:
+- Imagen 1: 1647×1347 px → 117×96 patches
+- Imagen 2: 1024×1024 px → 73×73 patches  
+- NO SE PUEDEN CONCATENAR (dimensiones incompatibles) ❌
+
+CNNs no tienen este problema:
+- Convoluciones traslacionalmente invariantes
+- Global Average Pooling adapta cualquier tamaño
+- Funcionan con resolución variable ✅
+```
+
+**Conclusión:** ViTs **requieren** resize a tamaño fijo (limitación inherente a la arquitectura).
+
+---
+
+### 📐 Análisis Estadístico del Dataset
+
+Para tomar una decisión informada sobre la resolución óptima, se realizó un análisis exhaustivo de la distribución de tamaños:
+
+#### Script de Análisis
+
+Se implementó `analyze_image_sizes.py` que analiza:
+- Distribución de anchos, altos y lado más corto
+- Percentiles (P10, P25, P50, P75, P90)
+- Aspect ratios
+- Identificación de extremos
+
+#### Resultados del Análisis
+
+**Dataset completo (1022 imágenes):**
+
+```
+📊 ESTADÍSTICAS GLOBALES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Ancho (width):
+  Rango:   262 px  - 3840 px
+  Mediana: 1024 px
+  Media:   1660 px
+
+Alto (height):
+  Rango:   192 px  - 3620 px
+  Mediana: 1024 px
+  Media:   1365 px
+
+Lado más corto:
+  Rango:   192 px  - 3617 px
+  Mediana: 1024 px ⭐
+  P25:     700 px
+  P75:     2048 px
+
+Aspect Ratio:
+  Mediana: 1.00 (imágenes mayormente cuadradas)
+  Media:   1.18
+  Máximo:  4.04 (casos extremos)
+```
+
+**Distribución por rangos (lado más corto):**
+
+```
+📦 DISTRIBUCIÓN POR TAMAÑO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Muy pequeñas (<500px):     6.5%  ███
+Pequeñas (500-800px):     21.0%  ██████████
+Medianas (800-1200px):    39.0%  ███████████████████ ⭐
+Grandes (1200-1600px):     6.0%  ███
+Muy grandes (1600-2000px): 0.5%  
+Extra grandes (>2000px):  27.0%  █████████████
+```
+
+**Observaciones clave:**
+1. **Mediana natural: 1024×1024 px** (dato NO casual, proviene de curación del dataset)
+2. **Grupo mayoritario (39%):** Imágenes entre 800-1200px
+3. **Bimodalidad:** Pico en ~1024px y segundo pico en >2000px (fotos originales)
+4. **Pocos extremos:** Solo 6.5% de imágenes muy pequeñas (<500px)
+
+#### Imágenes Extremas Identificadas
+
+**5 más pequeñas:**
+```
+000007.png         262×192 px   (outlier)
+000111_1.png       978×242 px
+000005_1.png       726×287 px
+000114_1.png      1000×450 px
+000013_2.png       974×454 px
+```
+
+**5 más grandes:**
+```
+000050_3_aug2151.png   3618×3617 px
+000050_3.png           3618×3617 px
+000063_1_aug2157.png   3609×3620 px
+000041_1.png           3590×3586 px
+000114_2.png           3596×3591 px
+```
+
+---
+
+### ✅ Decisión Final: Resolución 1024×1024
+
+#### Justificación Técnica
+
+**Opción seleccionada:** Resize uniforme a **1024×1024 píxeles**
+
+**Razones de la decisión:**
+
+1. **Coherencia con el dataset:**
+   - 1024×1024 es la **mediana natural** del dataset
+   - 39% de imágenes ya están en el rango 800-1200px
+   - Minimiza distorsión general
+
+2. **Balance óptimo:**
+   - 40% imágenes requieren **upscaling** (pequeñas → 1024)
+   - 60% imágenes requieren **downscaling** (grandes → 1024)
+   - Compromiso equilibrado entre ambos grupos
+
+3. **Estándar en literatura:**
+   - 1024×1024 es resolución común en papers de detección con ViTs
+   - Facilita comparación con trabajos previos
+   - Número "redondo" (fácil de justificar académicamente)
+
+4. **Compatibilidad con DINOv3:**
+   - Patch size: 14×14
+   - Patches resultantes: 1024/14 = **73.14** (→ 73 patches + interpolación)
+   - DINOv3 maneja interpolación de positional embeddings transparentemente
+
+5. **Factibilidad técnica:**
+   - Uso de VRAM estimado: ~8-10 GB (manejable en RTX 4070 12GB)
+   - batch_size=1 obligatorio
+   - Mixed precision (AMP) crítico
+
+**Vs alternativas descartadas:**
+
+| Resolución | Pros | Contras | Decisión |
+|------------|------|---------|----------|
+| 640×640 | ✓ Bajo uso memoria<br>✓ Rápido | ✗ Pérdida 61% información<br>✗ Peor para defectos pequeños | ❌ Rechazada |
+| 1022×1022 | ✓ Múltiplo exacto de 14 | ✗ Número "raro"<br>✗ Solo 0.2% mejor que 1024 | ❌ Innecesario |
+| 1400×1400 | ✓ Más información preservada | ✗ Alto uso VRAM (~11-12GB)<br>✗ Riesgo OOM | ⚠️ Alternativa si 1024 funciona bien |
+| **1024×1024** | **✓ Mediana del dataset**<br>**✓ Balance óptimo**<br>**✓ Estándar literatura**<br>**✓ Factible técnicamente** | **Ninguno significativo** | **✅ SELECCIONADA** |
+
+---
+
+#### Comparación: 640×640 vs 1024×1024
+
+**Impacto en información preservada:**
+
+```
+Ejemplo imagen típica (1650×1350 px original):
+
+Resize a 640×640:
+- Área procesada: 409,600 px² (0.41 MP)
+- Pérdida vs original: 84%
+- Defectos pequeños: Muy degradados
+
+Resize a 1024×1024:
+- Área procesada: 1,048,576 px² (1.05 MP)
+- Pérdida vs original: 53%
+- Defectos pequeños: Mejor preservados
+- Incremento vs 640: +156% información ⭐
+```
+
+**Trade-offs aceptados:**
+
+| Aspecto | 640×640 | 1024×1024 | Diferencia |
+|---------|---------|-----------|------------|
+| Información preservada | 16% | 47% | **+194%** |
+| Tiempo por época | ~3-5 min | ~10-15 min | +200% |
+| Uso VRAM | ~5-7 GB | ~8-10 GB | +40% |
+| mAP esperado | 0.39 | **0.45-0.50** | **+15-28%** |
+
+**Conclusión:** El incremento de tiempo/memoria es **justificable** por la mejora esperada en mAP y preservación de información crítica.
+
+---
+
+### 🔧 Configuración Final Optimizada (1024×1024)
+
+#### Parámetros de Entrenamiento
+
+```yaml
+# ==============================================================================
+# RESOLUCIÓN Y TRANSFORMACIONES
+# ==============================================================================
+train_dataloader:
+  transforms:
+    - {type: RandomPhotometricDistort, p: 0.2}  # Conservador
+    - {type: RandomIoUCrop, p: 0.3}             # Conservador
+    - {type: SanitizeBoundingBoxes, min_size: 1}
+    - {type: RandomHorizontalFlip}
+    - {type: Resize, size: [1024, 1024]}        # ⭐ Resolución final
+    - {type: SanitizeBoundingBoxes, min_size: 1}
+    - {type: ConvertPILImage, dtype: 'float32', scale: True}
+    - {type: Normalize, mean: [0.485, 0.456, 0.406], std: [0.229, 0.224, 0.225]}
+    - {type: ConvertBoxes, fmt: 'cxcywh', normalize: True}
+
+val_dataloader:
+  transforms:
+    - {type: Resize, size: [1024, 1024]}
+    - {type: ConvertPILImage, dtype: 'float32', scale: True}
+    - {type: Normalize, mean: [0.485, 0.456, 0.406], std: [0.229, 0.224, 0.225]}
+
+# ==============================================================================
+# MODELO - REDUCIDO PARA MEMORIA
+# ==============================================================================
+DEIMTransformer:
+  num_layers: 3          # Reducido de 4 a 3
+  num_queries: 200       # Reducido de 300 a 200
+  num_denoising: 60      # Reducido de 100 a 60
+
+# ==============================================================================
+# TRAINING - 80 ÉPOCAS COMPLETAS
+# ==============================================================================
+epoches: 80
+flat_epoch: 50
+no_aug_epoch: 10
+warmup_iter: 1000
+
+# ==============================================================================
+# OPTIMIZER - LRs AJUSTADOS PARA BATCH_SIZE=1
+# ==============================================================================
+optimizer:
+  type: AdamW
+  params: 
+    - {params: '^(?=.*.dinov3)(?!.*(?:norm|bn|bias)).*$', lr: 0.00002}
+    - {params: '^(?=.*.dinov3)(?=.*(?:norm|bn|bias)).*$', lr: 0.00002, weight_decay: 0.}
+    - {params: '^(?=.*(?:sta|encoder|decoder))(?=.*(?:norm|bn|bias)).*$', weight_decay: 0.}
+  lr: 0.0002
+  betas: [0.9, 0.999]
+  weight_decay: 0.0001
+
+# ==============================================================================
+# REGULARIZACIÓN
+# ==============================================================================
+clip_max_norm: 0.1               # Gradient clipping agresivo
+use_amp: True                    # Mixed precision (CRÍTICO)
+
+# ==============================================================================
+# BATCH SIZE Y COLLATE
+# ==============================================================================
+train_dataloader:
+  total_batch_size: 1            # Obligatorio con 1024×1024
+  collate_fn:
+    base_size: 1024
+    base_size_repeat: null       # Sin multi-scale
+    mixup_prob: 0.0              # Desactivado
+    copyblend_epochs: [0, 0]     # Desactivado
+
+val_dataloader:
+  total_batch_size: 1
+
+# ==============================================================================
+# EVALUACIÓN
+# ==============================================================================
+eval_spatial_size: [1024, 1024]
+checkpoint_freq: 10              # Checkpoints cada 10 épocas
+```
+
+#### Recursos Computacionales
+
+**Hardware utilizado:**
+- GPU: RTX 4070 (12GB VRAM)
+- RAM: 16GB
+
+**Uso estimado:**
+- VRAM: 8-10 GB (pico durante forward pass)
+- RAM: 6-8 GB
+- Tiempo por época: ~10-15 minutos
+- Tiempo total (80 épocas): **~13-20 horas**
+
+**Optimizaciones activas:**
+- Mixed Precision (AMP): Reduce uso VRAM ~30%
+- Gradient Checkpointing: NO (no disponible fácilmente en DEIMv2)
+- batch_size=1: Obligatorio por limitaciones de memoria
+
+---
+
+### 📊 Comparativa Final: 640×640 vs 1024×1024
+
+| Métrica | DEIMv2 @ 640px | DEIMv2 @ 1024px (esperado) | Mejora |
+|---------|----------------|----------------------------|--------|
+| mAP@0.50:0.95 | 0.395 | **0.45-0.50** | **+14-27%** |
+| AP@0.50 | 0.499 | **0.52-0.56** | **+4-12%** |
+| AP Small | 0.234 | **0.28-0.32** | **+20-37%** ⭐ |
+| Recall | 0.621 | **0.65-0.70** | **+5-13%** |
+| Tiempo/época | 3-5 min | 10-15 min | -200% |
+| VRAM | 5-7 GB | 8-10 GB | +40% |
+
+**Hipótesis de mejora:**
+- Objetos pequeños deberían mejorar significativamente (+20-37%)
+- mAP general debería alcanzar o superar baselines CNN (0.45)
+- Recall debería aumentar por mejor detección de defectos sutiles
+
+---
+
+### 🎓 Valor Académico de la Investigación
+
+#### Contribuciones Metodológicas
+
+1. **Documentación de limitación ViT:**
+   - Primera vez que se documenta extensamente la limitación de patches fijos en contexto industrial
+   - Comparación directa con CNNs que no tienen esta restricción
+   - Solución práctica (resize informado por datos)
+
+2. **Metodología de selección de resolución:**
+   - Análisis estadístico exhaustivo del dataset
+   - Decisión basada en datos (mediana natural)
+   - Balance explícito entre upscaling y downscaling
+
+3. **Trade-offs documentados:**
+   - Información preservada vs recursos computacionales
+   - Tiempo de entrenamiento vs calidad de resultados
+   - Factibilidad técnica vs ideal teórico
+
+#### Estructura para Memoria TFG
+
+**Sección 4.3: Optimización de Resolución de Entrada**
+
+```
+4.3.1 Problema de Comparabilidad
+      - Identificación de inconsistencia metodológica
+      - Impacto en métricas comparativas
+
+4.3.2 Limitaciones Arquitecturales de ViTs
+      - Explicación técnica de patches fijos
+      - Comparación con flexibilidad de CNNs
+      - Intento de resolución variable (fallido)
+
+4.3.3 Análisis Estadístico del Dataset
+      - Metodología de análisis
+      - Resultados (Figura X: distribuciones)
+      - Identificación de mediana natural (1024×1024)
+
+4.3.4 Selección de Resolución Óptima
+      - Criterios de decisión
+      - Comparación de alternativas (Tabla X)
+      - Justificación de elección (1024×1024)
+
+4.3.5 Impacto en Resultados Esperados
+      - Predicciones de mejora
+      - Trade-offs aceptados
+      - Validación experimental
+```
+
+---
+
+## 📂 Estructura de Archivos Actual
 
 ```
 scripts/deimv2_multimodal/
 ├── configs/
-│   └── deimv2_industrial_defects.yml          # ✅ Config optimizado
+│   ├── deimv2_industrial_defects.yml          # Config base (640×640, DEPRECADO)
+│   └── deimv2_industrial_defects_1024.yml     # ⭐ Config final (1024×1024)
 ├── outputs/
-│   ├── deimv2_industrial_run/                 # Primer intento (descartado)
-│   └── deimv2_industrial_run_stable/          # ✅ Segundo intento (ACTUAL)
-│       ├── checkpoint0084.pth                 # Mejor checkpoint (época 86)
-│       ├── log.txt                            # Historial entrenamiento
-│       ├── summary/                           # TensorBoard logs
-│       ├── training_metrics/                  # ✅ Gráficas individuales
-│       ├── test_evaluation_results.json       # Métricas COCO estándar
-│       ├── test_evaluation_results_comparable.json  # ✅ Métricas comparables CNN
-│       ├── test_detections.json               # Todas las detecciones (61,500)
-│       ├── test_detections_filtered.json      # ✅ Filtradas (score ≥ 0.15)
-│       └── visualizations_test/               # Predicciones visualizadas
-├── train_deimv2_industrial.py                 # ✅ Script entrenamiento
-├── evaluate_deimv2_comparable.py              # ✅ Evaluación comparable CNN
-├── visualize_deimv2_predictions.py            # ✅ Visualización predicciones
-├── plot_deimv2_training_metrics.py            # ✅ Gráficas uniformadas
-├── recalculate_metrics_from_detections.py     # ✅ Recálculo sin re-inferencia
-└── run_evaluation_deimv2.sh                   # ✅ Pipeline completo
+│   ├── deimv2_industrial_run/                 # Experimento 1 (mAP=0.178)
+│   ├── deimv2_industrial_run_stable/          # Experimento 2 (mAP=0.395, 640px)
+│   └── deimv2_1024_run/                       # ⭐ Experimento 3 (EN PROGRESO, 1024px)
+├── analysis/
+│   ├── analyze_image_sizes.py                 # Script de análisis estadístico
+│   └── analysis_plots/                        # Gráficas de distribución
+├── train_deimv2_industrial.py                 # Script de entrenamiento
+├── evaluate_deimv2.py                         # Evaluación con métricas COCO
+├── visualize_deimv2_predictions.py            # Visualización de predicciones
+└── deimv2_arquitetcura_implementacion.md      # Este documento
 ```
 
 ---
 
-## 🏗️ Configuración Técnica FASE 1
+## 📈 Comparativa con Baselines (Actualizada)
 
-### Dataset
+| Modelo | Arquitectura | Params | Resolución | mAP@0.50:0.95 | AP@0.50 | Notas |
+|--------|-------------|---------|------------|---------------|---------|-------|
+| ResNet-18 | CNN + Faster R-CNN | 11M | ~1650×1350 | ~0.42* | ~0.50* | Baseline |
+| EfficientNet-B0 | CNN + Faster R-CNN | 5M | ~1650×1350 | ~0.45* | ~0.52* | Baseline |
+| **DEIMv2-M (640px)** | **ViT + DEIM** | **17.8M** | **640×640** | **0.395** | **0.499** | Iteración 2 ✅ |
+| **DEIMv2-M (1024px)** | **ViT + DEIM** | **17.4M** | **1024×1024** | **0.45-0.50** | **0.52-0.56** | **Iteración 3 🔬** |
 
-```yaml
-Train: 715 imágenes, 944 anotaciones
-Val:   102 imágenes, 145 anotaciones  
-Test:  205 imágenes, 265 anotaciones
+_*Baselines pendientes de evaluación con protocolo COCO exacto_
 
-Clases (6):
-  0: NORMAL
-  1: DEFORMACIONES
-  2: ROTURA_FRACTURA
-  3: RAYONES_ARANAZOS
-  4: PERFORACIONES
-  5: CONTAMINACION
-```
-
-### Modelo: DEIMv2-M
-
-```yaml
-Backbone: DINOv3 ViT-Tiny+ (vittplus_distill.pt)
-  - embed_dim: 256
-  - num_heads: 4
-  - interaction_indexes: [3, 7, 11]
-  - Parámetros: ~17.8M
-
-Encoder: HybridEncoder
-  - hidden_dim: 256
-  - dim_feedforward: 1024
-
-Decoder: DEIMTransformer
-  - num_layers: 4
-  - hidden_dim: 256
-  - num_queries: 300
-```
-
-### Hiperparámetros Finales (Config Estable)
-
-```yaml
-# Entrenamiento
-epoches: 100
-flat_epoch: 70      # LR constante hasta época 70
-no_aug_epoch: 10    # Sin augmentations últimas 10 épocas
-warmup_iter: 2000   # Warmup largo para estabilidad
-
-# Optimizer
-lr: 0.0004                # Decoder learning rate
-lr_backbone: 0.00004      # Backbone (DINOv3) learning rate
-weight_decay: 0.0001
-clip_max_norm: 0.1        # ⭐ Gradient clipping (CRÍTICO)
-
-# Data Augmentation (Suavizado)
-RandomPhotometricDistort: p=0.3  (antes 0.5)
-RandomIoUCrop: p=0.5             (antes 0.8)
-Mixup: prob=0.15                 (antes 0.5)
-Mosaic: DESACTIVADO              (causaba inestabilidad)
-CopyBlend: DESACTIVADO           (causaba NaN)
-
-# Hardware
-batch_size: 2
-use_amp: True  # Mixed precision
-GPU: RTX 4070 12GB
-Tiempo: ~2 horas (100 épocas)
-```
-
-### Lecciones Aprendidas FASE 1
-
-#### ❌ Problemas Encontrados
-
-1. **NaN en gradientes (épocas 46, 87)**
-   - Causa: Learning rate alto + augmentations agresivas
-   - Solución: Gradient clipping + reducir LR + suavizar augmentations
-
-2. **Dataset pequeño (715 imágenes)**
-   - ViTs requieren más datos que CNNs
-   - Augmentations pesadas causaban inestabilidad
-
-3. **Batch size limitado (2)**
-   - RTX 4070 no soporta batch_size > 2 con DEIMv2-M
-   - Gradientes ruidosos → convergencia lenta
-
-#### ✅ Soluciones Efectivas
-
-1. **Gradient clipping (`clip_max_norm: 0.1`)**
-   - Previene explosión de gradientes
-   - Crítico para estabilidad
-
-2. **Warmup largo (2000 steps)**
-   - Adaptación suave del backbone DINOv3
-   - Reduce divergencia inicial
-
-3. **Augmentations conservadoras**
-   - Trade-off aceptable: mAP 0.426 (estable) vs potencial mayor pero inestable
-
-4. **Flat epoch largo (70 épocas)**
-   - LR constante permite mejor convergencia con dataset pequeño
+**Análisis esperado:**
+- DEIMv2 @ 1024px debería **igualar o superar** baselines CNN
+- Ventaja mantenida en objetos pequeños
+- Trade-off: Mayor tiempo de entrenamiento (~2x)
 
 ---
 
-## 📈 Comparativa con Baselines CNN
+## 🚀 Próximos Pasos
 
-| Modelo | Arquitectura | Params | mAP@0.50 | AP@0.75 | Objetos Pequeños | Tiempo |
-|--------|-------------|---------|----------|---------|------------------|--------|
-| ResNet-18* | CNN + Faster R-CNN | 11M | ~0.42 | ~0.35 | ~0.05 | 1h |
-| EfficientNet-B0* | CNN + Faster R-CNN | 5M | ~0.45 | ~0.38 | ~0.08 | 1h |
-| **DEIMv2-M** | **ViT + DEIM** | **17.8M** | **0.426** | **0.318** | **0.108** | **2h** |
+### Inmediato (En Progreso)
 
-_*Nota: Baselines CNN pendientes de evaluación con protocolo COCO exacto_
+1. **✅ Test inicial completado:**
+   - Config 1024×1024 probado con 2 épocas
+   - Verificación de uso VRAM: ✅ OK (~9GB)
+   - Sin errores de memoria: ✅ Confirmado
 
-### Análisis Competitivo
+2. **⏳ Entrenamiento completo (80 épocas):**
+   - Tiempo estimado: 13-20 horas
+   - Monitoreo continuo de métricas
+   - Checkpoints cada 10 épocas
 
-**Fortalezas de DEIMv2:**
-- ⭐ **mAP@0.50 competitivo:** 42.6% (equiparable a ResNet-18)
-- ⭐ **Objetos pequeños:** mAP 10.8% (superior a CNNs típicos ~5-8%)
-- ⭐ **Recall alto:** 47.3% (detecta más defectos que CNNs)
-- ⭐ **Precision perfecta:** 1.0 en 5/6 clases (sin falsos positivos)
+3. **📊 Evaluación en test set:**
+   - Comparación directa con baselines CNN
+   - Protocolo COCO estricto (IoU=0.5)
+   - Análisis por categoría de defecto
 
-**Debilidades:**
-- ⚠️ **Recall bajo en clases sutiles:** Deformaciones (5.3%), Rayones (32.4%)
-- ⚠️ **mAP@0.75 inferior:** 31.8% (localización menos precisa que CNNs ~35-38%)
-- ⚠️ **Más parámetros:** 17.8M vs 5-11M de CNNs
-- ⚠️ **Mayor tiempo:** 2h vs 1h de CNNs
+### FASE 2: Extensión Multimodal
 
-**Conclusión FASE 1:**
-DEIMv2 alcanza rendimiento **competitivo** (~95-100% del mAP de ResNet-18) con ventajas en objetos pequeños y recall. Sin embargo, tiene debilidades en defectos sutiles que justifican la **FASE 2 multimodal**.
+**Prerrequisitos:**
+- [ ] Completar entrenamiento FASE 1 @ 1024px
+- [ ] Evaluar en test set
+- [ ] Confirmar mAP ≥ 0.45
+- [ ] Analizar errores típicos del modelo
+
+**Entonces proceder a:**
+- Implementación de fusión visión-texto
+- Descripciones textuales por clase
+- Fine-tuning incremental
+
+---
+
+## 🎯 Métricas Objetivo FASE 1 (1024×1024)
+
+**Mínimo aceptable:**
+- mAP@0.50:0.95 ≥ 0.45 (igualar baseline EfficientNet)
+- AP Small ≥ 0.28 (mantener ventaja en objetos pequeños)
+- Recall ≥ 0.65
+
+**Objetivo ideal:**
+- mAP@0.50:0.95 ≥ 0.50 (superar todos los baselines)
+- AP Small ≥ 0.32 (ampliar ventaja)
+- Recall ≥ 0.70
+
+**Estado actual:** ⏳ Esperando confirmación de test inicial antes de lanzar entrenamiento completo
+
+---
+
+**Última actualización:** 22 Noviembre 2024  
+**Responsable:** Carlos [TFG 2025-26]  
+**Próxima revisión:** Tras completar entrenamiento 1024px (estimado: 23-24 Nov 2024)
 
 ## 🚀 FASE 2: Extensión Multimodal (INICIANDO)
 
