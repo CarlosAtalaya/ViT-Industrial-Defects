@@ -235,13 +235,13 @@ Precision: 1.00 (100%) en TODAS las clases ⭐
 ```
 
 **Tiempos de entrenamiento:**
-- 80 epochs: ~6-7 horas
-- 120 epochs: ~9-10 horas (+2-3h)
-- 300 epochs: ~20-22 horas (+10-12h vs 120ep)
+- 80 epochs: ~1 hora
+- 120 epochs: ~2 horas
+- 300 epochs: ~5 horas
 
 **Análisis de eficiencia:**
-- 80→120 epochs: +14.2 puntos mAP / +3h = **4.7 puntos/hora** ⭐⭐
-- 120→300 epochs: +1.9 puntos mAP / +11h = **0.17 puntos/hora**
+- 80→120 epochs: +14.2 puntos mAP / +1h = **4.7 puntos/hora** ⭐⭐
+- 120→300 epochs: +1.9 puntos mAP / +3h = **0.17 puntos/hora**
 - Conclusión: El mayor retorno está entre 80-150 epochs
 
 ---
@@ -253,9 +253,9 @@ EVOLUCIÓN DE mAP@0.5 POR NÚMERO DE EPOCHS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Epochs  mAP     Mejora    Tiempo  Eficiencia   Estado
 ────────────────────────────────────────────────────────────────
- 80     0.624   baseline   7h     -            ✅ Baseline sólido
-120     0.766   +14.2%    10h     4.7 pts/h    ⭐⭐ Mejor ROI
-300     0.785   +16.1%    22h     0.7 pts/h    ⭐⭐⭐ Máximo alcanzado
+ 80     0.624   baseline   1h 20min     -            ✅ Baseline sólido
+120     0.766   +14.2%    2h     4.7 pts/h    ⭐⭐ Mejor ROI
+300     0.785   +16.1%    5h     0.7 pts/h    ⭐⭐⭐ Máximo alcanzado
 
 Mejor época en cada entrenamiento:
   80 epochs  → epoch 80  (final)
@@ -265,7 +265,7 @@ Mejor época en cada entrenamiento:
 ```
 
 **Recomendación para entrenamientos futuros:**
-- **Óptimo práctico:** 150-180 epochs (~12-14h)
+- **Óptimo práctico:** 150-180 epochs (~3h)
 - Captura >98% de la mejora potencial
 - Tiempo razonable para iteración rápida
 
@@ -447,7 +447,7 @@ Warmup:         1000 steps   ✅ Estabiliza
 Flat epochs:    70           ✅ Plateau LR
 Epochs óptimo:  150-187      ✅⭐ Sweet spot
 VRAM usado:     5-7 GB       ✅ Eficiente
-Tiempo:         12-14h       ✅ Aceptable
+Tiempo:         5h       ✅ Aceptable
 ```
 
 ---
@@ -458,10 +458,10 @@ Tiempo:         12-14h       ✅ Aceptable
 |--------|-------------|---------|------------|---------|-----------|-------------|--------|--------|
 | ResNet-18* | CNN + Faster R-CNN | 11M | ~1650×1350 | ~0.50* | ~0.75* | ~0.42* | 1h | 100 |
 | EfficientNet-B0* | CNN + Faster R-CNN | 5M | ~1650×1350 | ~0.52* | ~0.78* | ~0.45* | 1h | 100 |
-| **DEIMv2 (640px)** | **ViT + DEIM** | **17.8M** | **640×640** | **0.499** | **0.83** | **0.41** | **2h** | **86** |
-| **DEIMv2 (1024px, 80ep)** | **ViT + DEIM** | **17.4M** | **1024×1024** | **0.624** | **0.855** | **0.55** | **7h** | **80** |
-| **DEIMv2 (1024px, 120ep)** | **ViT + DEIM** | **17.4M** | **1024×1024** | **0.766** ⭐ | **0.994** | **0.70** ⭐ | **10h** | **120** |
-| **DEIMv2 (1024px, 300ep)** | **ViT + DEIM** | **17.4M** | **1024×1024** | **0.785** ⭐⭐ | **0.980** | **0.72** ⭐⭐ | **22h** | **187*** |
+| **DEIMv2 (640px)** | **ViT + DEIM** | **17.8M** | **640×640** | **0.499** | **0.83** | **0.41** | **1h** | **86** |
+| **DEIMv2 (1024px, 80ep)** | **ViT + DEIM** | **17.4M** | **1024×1024** | **0.624** | **0.855** | **0.55** | **1h20min** | **80** |
+| **DEIMv2 (1024px, 120ep)** | **ViT + DEIM** | **17.4M** | **1024×1024** | **0.766** ⭐ | **0.994** | **0.70** ⭐ | **2h** | **120** |
+| **DEIMv2 (1024px, 300ep)** | **ViT + DEIM** | **17.4M** | **1024×1024** | **0.785** ⭐⭐ | **0.980** | **0.72** ⭐⭐ | **5h** | **187*** |
 
 _*Valores CNNs estimados pendientes de evaluación formal_  
 _*Mejor epoch del entrenamiento de 300_
@@ -487,7 +487,7 @@ vs DEIMv2 @ 640px:
   Mejora dramática por resolución + epochs
 
 Trade-off:
-  Tiempo: 22h vs 1h CNN (+2100%)
+  Tiempo: 5h vs 1h CNN (+500%)
   Justificación: Entrenamiento offline, 
                  mejora >50% lo compensa ampliamente
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -794,10 +794,10 @@ scripts/deimv2_multimodal/
 |--------|------------|--------|---------|-----------|------------|--------|--------|
 | ResNet-18 | Original | 100 | 0.50* | 0.42* | 0.38* | 11M | 1h |
 | EfficientNet | Original | 100 | 0.52* | 0.45* | 0.40* | 5M | 1h |
-| DEIMv2 (640px) | 640 | 86 | 0.50 | 0.41 | 0.39 | 17.8M | 2h |
-| DEIMv2 (1024px) | 1024 | 80 | 0.624 | 0.384 | 0.476 | 17.4M | 7h |
-| DEIMv2 (1024px) | 1024 | 120 | 0.766 | 0.539 | 0.717 | 17.4M | 10h |
-| **DEIMv2 (1024px)** | **1024** | **187** | **0.785** | **0.576** | **0.806** | **17.4M** | **14h** |
+| DEIMv2 (640px) | 640 | 86 | 0.50 | 0.41 | 0.39 | 17.8M | 1h |
+| DEIMv2 (1024px) | 1024 | 80 | 0.624 | 0.384 | 0.476 | 17.4M | 1h20min |
+| DEIMv2 (1024px) | 1024 | 120 | 0.766 | 0.539 | 0.717 | 17.4M | 2h |
+| **DEIMv2 (1024px)** | **1024** | **187** | **0.785** | **0.576** | **0.806** | **17.4M** | **5h** |
 | DEIMv2-MM* | 1024 | 187+40 | **0.82-0.85** | **0.68-0.72** | **0.85-0.88** | 19M | 18h |
 
 _*FASE 2 - Resultados esperados_
