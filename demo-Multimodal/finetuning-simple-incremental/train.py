@@ -26,7 +26,7 @@ from deimv2_fusion_wrapper import build_deimv2_with_fusion
 
 # Configuración
 checkpoint_path = "scripts/deimv2_multimodal/outputs/deimv2_1024_300epochs/best_stg1.pth"
-deimv2_config_path = "demo-Multimodal/finetuning-simple-incremental/configs/config.yml"
+deimv2_config_path = "scripts/deimv2_multimodal/configs/deimv2_industrial_defects.yml"
 output_dir = "demo-Multimodal/finetuning-simple-incremental/outputs/fase2"
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -64,6 +64,11 @@ print(f"   Frozen params: {sum(p.numel() for p in model.parameters() if not p.re
 
 # 4. Cargar config para dataloaders
 cfg = YAMLConfig(deimv2_config_path)
+
+# TEMPORAL: num_workers=0 para evitar error multiprocessing
+cfg.yaml_cfg['train_dataloader']['num_workers'] = 0
+cfg.yaml_cfg['val_dataloader']['num_workers'] = 0
+
 train_loader = cfg.train_dataloader
 val_loader = cfg.val_dataloader
 
