@@ -1,0 +1,166 @@
+__include__: [
+  '../../../DEIMv2/configs/dataset/coco_detection.yml',
+  '../../../DEIMv2/configs/runtime.yml',
+  '../../../DEIMv2/configs/base/dataloader.yml',
+  '../../../DEIMv2/configs/base/optimizer.yml',
+  '../../../DEIMv2/configs/base/deimv2.yml',
+]
+
+# ==============================================================================
+# DEIMv2 INDUSTRIAL - CONFIG OPTIMIZADO PARA VELOCIDAD
+# Cambios vs test: batch_size 1→4, modelo completo, num_workers 2→4
+# Tiempo estimado: 5-7 horas (vs 13-20h del config conservador)
+# ==============================================================================
+
+output_dir: ./scripts/deimv2_multimodal/outputs/deimv2_1024_300epochs
+
+# ==============================================================================
+# DATASET - 1024×1024
+# ==============================================================================
+task: detection
+num_classes: 6
+remap_mscoco_category: False
+
+train_dataloader:
+  type: DataLoader
+  total_batch_size: 8  # ⭐ AUMENTADO de 1 a 4
+  dataset:
+    type: CocoDetection
+    img_folder: /home/carlos/Escritorio/Proyectos_Personales/TFG_25-26/TFG-ViT/ViT/ViT-Industrial-Defects/curated_dataset_splitted_20251101_provisional_1st_version/train/images
+    ann_file: /home/carlos/Escritorio/Proyectos_Personales/TFG_25-26/TFG-ViT/ViT/ViT-Industrial-Defects/curated_dataset_splitted_20251101_provisional_1st_version/train/train.json
+    return_masks: False
+    transforms:
+      type: Compose
+      ops:
+        - {type: RandomPhotometricDistort, p: 0.2}
+        - {type: RandomIoUCrop, p: 0.3}
+        - {type: SanitizeBoundingBoxes, min_size: 1}
+        - {type: RandomHorizontalFlip}
+        - {type: Resize, size: [1024, 1024]}
+        - {type: SanitizeBoundingBoxes, min_size: 1}
+        - {type: ConvertPILImage, dtype: 'float32', scale: True}
+        - {type: Normalize, mean: [0.485, 0.456, 0.406], std: [0.229, 0.224, 0.225]}
+        - {type: ConvertBoxes, fmt: 'cxcywh', normalize: True}
+      policy:
+        epoch: [0, 250, 300]
+        ops: ['RandomPhotometricDistort', 'RandomIoUCrop']
+  shuffle: True
+  num_workers: 4  # ⭐ AUMENTADO de 2 a 4
+  drop_last: False
+  collate_fn:
+    type: BatchImageCollateFunction
+    base_size: 1024
+    base_size_repeat: null
+    mixup_prob: 0.0
+    ema_restart_decay: 0.9999
+    stop_epoch: 300
+    mixup_epochs: [0, 0]
+    copyblend_epochs: [0, 0]
+
+val_dataloader:
+  type: DataLoader
+  total_batch_size: 4  # ⭐ AUMENTADO de 1 a 2
+  dataset:
+    type: CocoDetection
+    img_folder: /home/carlos/Escritorio/Proyectos_Personales/TFG_25-26/TFG-ViT/ViT/ViT-Industrial-Defects/curated_dataset_splitted_20251101_provisional_1st_version/val/images
+    ann_file: /home/carlos/Escritorio/Proyectos_Personales/TFG_25-26/TFG-ViT/ViT/ViT-Industrial-Defects/curated_dataset_splitted_20251101_provisional_1st_version/val/val.json
+    return_masks: False
+    transforms:
+      type: Compose
+      ops:
+        - {type: Resize, size: [1024, 1024]}
+        - {type: ConvertPILImage, dtype: 'float32', scale: True}
+        - {type: Normalize, mean: [0.485, 0.456, 0.406], std: [0.229, 0.224, 0.225]}
+  shuffle: False
+  num_workers: 4  # ⭐ AUMENTADO de 2 a 4
+  drop_last: False
+  collate_fn:
+    type: BatchImageCollateFunction
+    base_size: null
+    base_size_repeat: null
+
+# ==============================================================================
+# MODEL - MODELO COMPLETO (hay margen de memoria)
+# ==============================================================================
+DEIM:
+  backbone: DINOv3STAs
+
+DINOv3STAs:
+  name: vit_tiny_plus
+  embed_dim: 256
+  weights_path: /home/carlos/Escritorio/Proyectos_Personales/TFG_25-26/TFG-ViT/ViT/ViT-Industrial-Defects/models/backbones_DEIMv2/vittplus_distill.pt
+  interaction_indexes: [3, 7, 11]
+  num_heads: 4
+  finetune: True
+  conv_inplane: 32
+  hidden_dim: 256
+
+HybridEncoder:
+  in_channels: [256, 256, 256]
+  hidden_dim: 256
+  dim_feedforward: 1024
+  depth_mult: 0.67
+  expansion: 0.34
+
+DEIMTransformer:
+  feat_channels: [256, 256, 256]
+  hidden_dim: 256
+  dim_feedforward: 1024
+  num_layers: 4       # ⭐ RESTAURADO de 3 a 4
+  num_queries: 300    # ⭐ RESTAURADO de 200 a 300
+  num_denoising: 100  # ⭐ RESTAURADO de 60 a 100
+  eval_idx: -1
+
+# ==============================================================================
+# TRAINING - 80 ÉPOCAS
+# ==============================================================================
+epoches: 300
+flat_epoch: 250
+no_aug_epoch: 10
+
+lrsheduler: flatcosine
+lr_gamma: 0.5
+warmup_iter: 1000
+
+# ==============================================================================
+# OPTIMIZER - LRs ESCALADOS PARA BATCH_SIZE=4
+# ==============================================================================
+optimizer:
+  type: AdamW
+  params: 
+    -
+      params: '^(?=.*.dinov3)(?!.*(?:norm|bn|bias)).*$'  
+      lr: 0.00004  # ⭐ 2x (era 0.00002, escalado por batch_size)
+    -
+      params: '^(?=.*.dinov3)(?=.*(?:norm|bn|bias)).*$'    
+      lr: 0.00004  # ⭐ 2x
+      weight_decay: 0.
+    - 
+      params: '^(?=.*(?:sta|encoder|decoder))(?=.*(?:norm|bn|bias)).*$'
+      weight_decay: 0.
+
+  lr: 0.0004  # ⭐ 2x (era 0.0002, escalado por batch_size)
+  betas: [0.9, 0.999]
+  weight_decay: 0.0001
+
+# ==============================================================================
+# CRITERION
+# ==============================================================================
+DEIMCriterion:
+  matcher:
+    change_matcher: True
+    iou_order_alpha: 4.0
+    matcher_change_epoch: 270
+
+clip_max_norm: 0.1
+
+# ==============================================================================
+# HARDWARE
+# ==============================================================================
+use_amp: True
+checkpoint_freq: 10
+eval_spatial_size: [1024, 1024]
+
+print_freq: 50
+sync_bn: True
+find_unused_parameters: True

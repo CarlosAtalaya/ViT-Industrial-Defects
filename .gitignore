@@ -8,3 +8,4 @@ scripts/efficientnet/__pycache__/
 scripts/resnet18/results/
 scripts/resnet18/__pycache__/
 scripts/deimv2_multimodal/outputs/
+demo-Multimodal/finetuning-simple-incremental/outputs/
