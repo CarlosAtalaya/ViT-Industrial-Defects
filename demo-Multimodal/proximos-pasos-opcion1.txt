@@ -1,0 +1,216 @@
+# 🚀 Próximos Pasos: Fase 2 (Opción 1 - Implementación Incremental)
+
+**Estado:** Entrenamiento en curso ✅
+**Estrategia:** Wrapper Multimodal sobre DEIMv2 congelado.
+**Objetivo:** Superar mAP 0.785 mejorando distinción semántica (Rotura vs Rayones).
+
+Este documento detalla cómo evaluar, visualizar y mejorar el modelo multimodal que se está entrenando actualmente.
+
+---
+
+## 1. Monitorización y Gráficas de Entrenamiento
+
+### ¿Puedo usar los scripts antiguos?
+**Parcialmente.** La estructura del log de entrenamiento es similar, pero como este es un script personalizado (`train.py`), es mejor usar un script de ploteo específico para leer los logs de esta carpeta.
+
+### Tarea: Generar Gráficas de Loss
+Crea un archivo `plot_metrics.py` en esta carpeta para visualizar cómo baja la loss de clasificación multimodal.
+
+**Script sugerido (`plot_metrics.py`):**
+
+import matplotlib.pyplot as plt
+import re
+
+def plot_training_loss(log_file='output.log'):
+    losses = []
+    epochs = []
+    
+    try:
+        with open(log_file, 'r') as f:
+            for line in f:
+                # Buscar patrones tipo: "Epoch 5 - Avg Loss: 1.2345"
+                if "Avg Loss:" in line:
+                    parts = line.split()
+                    loss = float(parts[-1])
+                    # Asumiendo formato "Epoch X - ..."
+                    epoch_part = line.split('-')[0].strip() # "Epoch 5"
+                    epoch = int(epoch_part.split()[-1])
+                    losses.append(loss)
+                    epochs.append(epoch)
+    except FileNotFoundError:
+        print(f"❌ No se encontró el archivo {log_file}")
+        return
+
+    if not losses:
+        print("⚠️ No se encontraron datos de loss en el log.")
+        return
+
+    plt.figure(figsize=(10, 5))
+    plt.plot(epochs, losses, label='Training Loss (Multimodal)', color='blue', marker='o')
+    plt.title('Evolución del Entrenamiento FASE 2')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss Total (Clasificación)')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.savefig('training_metrics_fase2.png')
+    print("✅ Gráfica guardada como training_metrics_fase2.png")
+
+if __name__ == "__main__":
+    # Asegúrate de haber guardado la salida del entrenamiento:
+    # python train.py > output.log 2>&1
+    plot_training_loss('output.log')
+
+
+
+2. Evaluación del Modelo (Test Set)
+¿Puedo usar evaluate_deimv2.py antiguo?
+NO directamente. * Razón: El script antiguo carga un modelo DEIM puro. Tu nuevo checkpoint (checkpoint_epochX.pth o final.pth) contiene un modelo DEIMv2WithFusion (el wrapper). Si intentas cargarlo con el script antiguo, fallará por incompatibilidad de claves (state_dict keys mismatch).
+
+Solución: Nuevo Script de Evaluación Adaptado
+Necesitas un script que instancie el Wrapper antes de cargar los pesos.
+
+Crear evaluate.py en demo-Multimodal/finetuning-simple-incremental/:
+
+Python
+
+import torch
+from torch.utils.data import DataLoader
+import sys
+from pathlib import Path
+
+# Imports necesarios (ajusta las rutas según tu estructura)
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+DEIMV2_PATH = PROJECT_ROOT / "DEIMv2"
+sys.path.insert(0, str(DEIMV2_PATH))
+sys.path.insert(0, str(Path(__file__).parent))
+
+from engine.core import YAMLConfig
+from engine.data.dataset.coco_eval import CocoEvaluator
+from models_utils import TextEncoder
+from data import get_text_prompts
+from deimv2_fusion_wrapper import build_deimv2_with_fusion
+
+def evaluate_multimodal(checkpoint_path):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    # 1. Configuración (misma que train)
+    config_path = "scripts/deimv2_multimodal/configs/deimv2_industrial_defects.yml"
+    
+    # 2. Preparar Embeddings
+    text_encoder = TextEncoder(freeze=True).to(device)
+    text_embeddings = text_encoder.encode_texts(get_text_prompts(), device)
+    
+    # 3. Construir Modelo Wrapper
+    # Nota: Pasamos el checkpoint de Fase 1 para inicializar la estructura base, 
+    # luego sobreescribiremos con el checkpoint entrenado de Fase 2
+    base_ckpt = "scripts/deimv2_multimodal/outputs/deimv2_1024_300epochs/best_stg1.pth"
+    
+    print("🏗️ Construyendo arquitectura multimodal...")
+    model = build_deimv2_with_fusion(base_ckpt, config_path, text_embeddings, device)
+    
+    # 4. Cargar pesos entrenados en Fase 2 (Fusión + Detector)
+    print(f"📂 Cargando checkpoint Fase 2: {checkpoint_path}")
+    ckpt = torch.load(checkpoint_path, map_location=device)
+    
+    # Manejo robusto de state_dict
+    state_dict = ckpt['model'] if 'model' in ckpt else ckpt
+    model.load_state_dict(state_dict)
+    
+    model.to(device)
+    model.eval()
+    
+    # 5. Dataloader Test/Val
+    cfg = YAMLConfig(config_path)
+    # Forzar batch size 1 para evaluación precisa
+    cfg.yaml_cfg['val_dataloader']['total_batch_size'] = 1
+    val_loader = cfg.val_dataloader 
+    
+    # Obtener postprocessor del config
+    postprocessor = cfg.postprocessor
+    
+    # 6. Evaluador COCO
+    # Asegúrate de que dataset.coco existe (depende de tu implementación de dataset)
+    coco_evaluator = CocoEvaluator(val_loader.dataset.coco, ['bbox'])
+    
+    print("🚀 Iniciando evaluación...")
+    for i, (images, targets) in enumerate(val_loader):
+        images = images.to(device)
+        targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+        
+        with torch.no_grad():
+            # Forward
+            outputs = model(images)
+            
+        # Formatear outputs para COCO Eval
+        orig_target_sizes = torch.stack([t["orig_size"] for t in targets], dim=0)
+        results = postprocessor(outputs, orig_target_sizes)
+        
+        res = {target['image_id'].item(): output for target, output in zip(targets, results)}
+        coco_evaluator.update(res)
+        
+        if (i+1) % 50 == 0:
+            print(f"   Procesadas {i+1} imágenes...")
+        
+    coco_evaluator.synchronize_between_processes()
+    coco_evaluator.accumulate()
+    coco_evaluator.summarize()
+
+if __name__ == "__main__":
+    # Ajusta al nombre de tu mejor checkpoint
+    ckpt_file = "demo-Multimodal/finetuning-simple-incremental/outputs/fase2/final.pth"
+    evaluate_multimodal(ckpt_file)
+3. Análisis Cualitativo (Visualización)
+Para demostrar la mejora en el TFG, necesitas ver dónde ha cambiado la detección.
+
+Generar Matriz de Confusión:
+
+Comparar las predicciones del modelo Fase 1 vs Fase 2.
+
+Objetivo: Ver si la confusión entre las clases 2 (RAYONES) y 5 (ROTURA) ha disminuido.
+
+Visualización de Predicciones:
+
+Usa visualize_predictions.py (el script que ya tienes en otras carpetas), pero tendrás que modificar la carga del modelo para usar build_deimv2_with_fusion igual que en el punto anterior.
+
+4. Ajuste de Hiperparámetros (Fine-Tuning del Fine-Tuning)
+Si los resultados iniciales no alcanzan el 0.82-0.85 mAP, aquí tienes qué tocar en la Opción 1:
+
+A. Parámetros de Entrenamiento (train.py)
+Learning Rate: Estás usando 1e-4.
+
+Prueba: Bajar a 5e-5 si la loss oscila mucho. Subir a 2e-4 si baja muy lento.
+
+Epochs: 40 puede ser poco si la convergencia es lenta. Prueba 60.
+
+B. Módulo de Fusión (multimodal_fusion.py)
+Dimensiones de Proyección: Actualmente proyectas 256 -> 256.
+
+Prueba: Aumentar la capacidad: 256 -> 512 -> 256.
+
+Dropout: Está en 0.1.
+
+Prueba: Subir a 0.2 o 0.3 si ves que memoriza demasiado rápido (overfitting).
+
+C. Descripciones de Texto (class_descriptions.py)
+Esta es la palanca más potente de la multimodalidad.
+
+Acción: Revisa las palabras clave. ¿Son suficientemente distintas?
+
+Normal: "Clean surface"
+
+Rotura: "Deep crack, penetration"
+
+Rayón: "Superficial scratch, no depth"
+
+Experimento: Prueba descripciones negativas (e.g., para Rayón añadir "not a crack").
+
+5. Checklist Final para la Memoria TFG
+Cuando termines esta fase, deberías tener:
+
+[ ] Gráfica comparativa de Loss (Fase 2).
+
+[ ] Tabla de mAP por clase (Fase 1 Base vs Fase 2 Multimodal).
+
+[ ] Ejemplo visual de una "Rotura" que antes se detectaba como "Rayón" y ahora se clasifica bien.
+
+[ ] Justificación de por qué el "Frozen Detector" (Opción 1) es más eficiente en recursos que re-entrenar todo.

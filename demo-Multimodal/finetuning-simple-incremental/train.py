@@ -89,6 +89,26 @@ print(f"   Output: {output_dir}\n")
 
 # Criterion y postprocessor de DEIMv2
 criterion = cfg.criterion.to(device)
+# --- INICIO DEL FIX (Reemplaza el bloque anterior de aux_loss) ---
+print("\n🔧 AJUSTE CRÍTICO PARA OPCIÓN 1:")
+
+# 1. Desactivar flag aux_loss (si existe)
+if hasattr(criterion, 'aux_loss'):
+    criterion.aux_loss = False
+
+# 2. FILTRAR PÉRDIDAS: Eliminar pérdidas geométricas ('boxes', 'giou', 'local')
+# Como el detector está congelado, solo nos interesa entrenar la clasificación.
+# Esto evita el KeyError: 'up' y otros errores por falta de tensores geométricos.
+classification_losses = ['focal', 'vfl', 'mal', 'ce'] # Tipos posibles de loss de clase
+original_losses = criterion.losses
+criterion.losses = [l for l in original_losses if l in classification_losses]
+
+print(f"   - Original losses: {original_losses}")
+print(f"   - Losses activas:  {criterion.losses}")
+
+if not criterion.losses:
+    raise RuntimeError("❌ ERROR: Se han filtrado todas las losses. Revisa 'classification_losses'.")
+# -----------------------------------------------------------------
 postprocessor = cfg.postprocessor
 
 print(f"✅ Criterion: {type(criterion).__name__}")
@@ -100,6 +120,26 @@ scaler = torch.cuda.amp.GradScaler() if cfg.yaml_cfg.get('use_amp', False) else 
 # Training loop
 model.train()
 model.deimv2.eval()  # Detector frozen en eval
+
+# --- BLOQUE DE SEGURIDAD (Añadir antes del loop de entrenamiento) ---
+print("\n🛡️  Ejecutando Safety Check de dimensiones...")
+try:
+    # Crear un batch falso [Batch, 3, 1024, 1024]
+    dummy_img = torch.randn(2, 3, 1024, 1024).to(device)
+    # Forward pass
+    with torch.no_grad():
+        out = model(dummy_img)
+    
+    # Verificar salidas
+    if isinstance(out, dict) and 'pred_logits' in out:
+        print(f"   ✓ Output shape correcto: {out['pred_logits'].shape}") # Debería ser [2, 300, 6]
+        print("   ✅ Safety Check SUPERADO. Iniciando entrenamiento.\n")
+    else:
+        print(f"   ⚠️ Output inesperado: {type(out)}")
+except Exception as e:
+    print(f"\n❌ ERROR EN SAFETY CHECK: {e}")
+    print("   Revisa el wrapper y el módulo de fusión antes de entrenar.")
+    exit()
 
 for epoch in range(epochs):
     print(f"\n{'='*70}")
@@ -119,7 +159,7 @@ for epoch in range(epochs):
         
         # Forward
         if scaler is not None:
-            with torch.cuda.amp.autocast():
+            with torch.amp.autocast('cuda'):
                 outputs = model(images, targets)
                 losses = criterion(outputs, targets)
                 loss = sum(losses.values())

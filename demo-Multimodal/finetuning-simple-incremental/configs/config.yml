@@ -23,7 +23,7 @@ remap_mscoco_category: False
 
 train_dataloader:
   type: DataLoader
-  total_batch_size: 8  # ⭐ AUMENTADO de 1 a 4
+  total_batch_size: 4  # ⭐ AUMENTADO de 1 a 4
   dataset:
     type: CocoDetection
     img_folder: /home/carlos/Escritorio/Proyectos_Personales/TFG_25-26/TFG-ViT/ViT/ViT-Industrial-Defects/curated_dataset_splitted_20251101_provisional_1st_version/train/images
