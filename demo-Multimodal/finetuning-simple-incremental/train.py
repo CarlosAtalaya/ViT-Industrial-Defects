@@ -1,215 +1,215 @@
 #!/usr/bin/env python3
 """
-FASE 2 Training - Final
-=======================
-
-Entrena fusion multimodal usando DEIMv2 como base.
+FASE 2 Training - Test Run (5 Epochs)
+=====================================
+Entrenamiento incremental del módulo de fusión multimodal.
 """
 
 import os
 import sys
-from pathlib import Path
+import json
 import torch
+import torch.nn as nn
+from pathlib import Path
+from pycocotools.cocoeval import COCOeval
 
-# Paths
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+# --- PATHS SETUP ---
+current_file = Path(__file__).resolve()
+PROJECT_ROOT = current_file.parent.parent.parent
 DEIMV2_PATH = PROJECT_ROOT / "DEIMv2"
 
-sys.path.insert(0, str(DEIMV2_PATH))
-sys.path.insert(0, str(Path(__file__).parent))
+if str(DEIMV2_PATH) not in sys.path:
+    sys.path.insert(0, str(DEIMV2_PATH))
+sys.path.insert(0, str(current_file.parent))
 
-# Imports
+# Imports del proyecto
 from engine.core import YAMLConfig
 from models_utils import TextEncoder
 from data import get_text_prompts
 from deimv2_fusion_wrapper import build_deimv2_with_fusion
 
-# Configuración
-checkpoint_path = "scripts/deimv2_multimodal/outputs/deimv2_1024_300epochs/best_stg1.pth"
-deimv2_config_path = "scripts/deimv2_multimodal/configs/deimv2_industrial_defects.yml"
-output_dir = "demo-Multimodal/finetuning-simple-incremental/outputs/fase2"
+# --- FIX: IMPORTAR MÓDULOS PARA REGISTRO ---
+# Esto es vital: al importarlos, se ejecutan los @register y el config puede encontrar 'Resize', 'ToTensor', etc.
+import engine.data.transforms 
+import engine.data.dataset
+# -------------------------------------------
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# --- CONFIGURACIÓN DE LA PRUEBA ---
+EPOCHS = 5
+CHECKPOINT_SOURCE = "scripts/deimv2_multimodal/outputs/deimv2_1024_300epochs/best_stg1.pth"
+# Asegúrate de que este path es correcto según donde guardaste el config corregido
+CONFIG_PATH = "demo-Multimodal/finetuning-simple-incremental/configs/config.yml"
+OUTPUT_DIR = "demo-Multimodal/finetuning-simple-incremental/outputs/fase2_test_run-5epochs"
 
-print("\n" + "="*70)
-print("FASE 2: Entrenamiento Multimodal")
-print("="*70)
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# 1. Generar text embeddings
-print("\n📝 Generando text embeddings...")
-text_encoder = TextEncoder(freeze=True).to(device)
-text_prompts = get_text_prompts()
-text_embeddings = text_encoder.encode_texts(text_prompts, device)
-print(f"✅ Text embeddings: {text_embeddings.shape}")
-
-# 2. Construir modelo con fusion
-print("\n🏗️  Construyendo modelo...")
-model = build_deimv2_with_fusion(
-    checkpoint_path=checkpoint_path,
-    config_path=deimv2_config_path,
-    text_embeddings=text_embeddings,
-    device=device
-)
-
-# 3. Optimizer solo para fusion
-optimizer = torch.optim.AdamW(
-    [p for p in model.fusion.parameters() if p.requires_grad],
-    lr=0.0001,
-    weight_decay=0.0001
-)
-
-print(f"\n📊 Setup:")
-print(f"   Trainable params: {sum(p.numel() for p in model.parameters() if p.requires_grad):,}")
-print(f"   Frozen params: {sum(p.numel() for p in model.parameters() if not p.requires_grad):,}")
-
-# 4. Cargar config para dataloaders
-cfg = YAMLConfig(deimv2_config_path)
-
-# TEMPORAL: num_workers=0 para evitar error multiprocessing
-cfg.yaml_cfg['train_dataloader']['num_workers'] = 0
-cfg.yaml_cfg['val_dataloader']['num_workers'] = 0
-
-train_loader = cfg.train_dataloader
-val_loader = cfg.val_dataloader
-
-print(f"\n📦 Data:")
-print(f"   Train batches: {len(train_loader)}")
-print(f"   Val batches: {len(val_loader)}")
-
-# 5. Training loop
-os.makedirs(output_dir, exist_ok=True)
-
-epochs = 40
-best_map = 0.785  # Baseline
-
-print(f"\n🚀 Comenzando entrenamiento:")
-print(f"   Epochs: {epochs}")
-print(f"   Target mAP: 0.80")
-print(f"   Output: {output_dir}\n")
-
-# Criterion y postprocessor de DEIMv2
-criterion = cfg.criterion.to(device)
-# --- INICIO DEL FIX (Reemplaza el bloque anterior de aux_loss) ---
-print("\n🔧 AJUSTE CRÍTICO PARA OPCIÓN 1:")
-
-# 1. Desactivar flag aux_loss (si existe)
-if hasattr(criterion, 'aux_loss'):
-    criterion.aux_loss = False
-
-# 2. FILTRAR PÉRDIDAS: Eliminar pérdidas geométricas ('boxes', 'giou', 'local')
-# Como el detector está congelado, solo nos interesa entrenar la clasificación.
-# Esto evita el KeyError: 'up' y otros errores por falta de tensores geométricos.
-classification_losses = ['focal', 'vfl', 'mal', 'ce'] # Tipos posibles de loss de clase
-original_losses = criterion.losses
-criterion.losses = [l for l in original_losses if l in classification_losses]
-
-print(f"   - Original losses: {original_losses}")
-print(f"   - Losses activas:  {criterion.losses}")
-
-if not criterion.losses:
-    raise RuntimeError("❌ ERROR: Se han filtrado todas las losses. Revisa 'classification_losses'.")
-# -----------------------------------------------------------------
-postprocessor = cfg.postprocessor
-
-print(f"✅ Criterion: {type(criterion).__name__}")
-print(f"✅ Postprocessor: {type(postprocessor).__name__}")
-
-# Scaler para AMP
-scaler = torch.cuda.amp.GradScaler() if cfg.yaml_cfg.get('use_amp', False) else None
-
-# Training loop
-model.train()
-model.deimv2.eval()  # Detector frozen en eval
-
-# --- BLOQUE DE SEGURIDAD (Añadir antes del loop de entrenamiento) ---
-print("\n🛡️  Ejecutando Safety Check de dimensiones...")
-try:
-    # Crear un batch falso [Batch, 3, 1024, 1024]
-    dummy_img = torch.randn(2, 3, 1024, 1024).to(device)
-    # Forward pass
+def evaluate_coco_map(model, loader, device, postprocessor):
+    """Ejecuta validación COCO estándar."""
+    model.eval()
+    coco_gt = loader.dataset.coco
+    results = []
+    
+    print(f"   Running COCO evaluation...", end="", flush=True)
+    
     with torch.no_grad():
-        out = model(dummy_img)
+        for images, targets in loader:
+            images = images.to(device)
+            outputs = model(images)
+            
+            orig_target_sizes = torch.stack([t["orig_size"] for t in targets], dim=0).to(device)
+            results_batch = postprocessor(outputs, orig_target_sizes)
+            
+            for i, (res, tgt) in enumerate(zip(results_batch, targets)):
+                image_id = tgt["image_id"].item()
+                scores = res["scores"].cpu().numpy()
+                labels = res["labels"].cpu().numpy()
+                boxes = res["boxes"].cpu().numpy()
+                
+                boxes[:, 2] -= boxes[:, 0]
+                boxes[:, 3] -= boxes[:, 1]
+                
+                for score, label, box in zip(scores, labels, boxes):
+                    results.append({
+                        "image_id": image_id,
+                        "category_id": int(label),
+                        "bbox": [float(x) for x in box],
+                        "score": float(score)
+                    })
     
-    # Verificar salidas
-    if isinstance(out, dict) and 'pred_logits' in out:
-        print(f"   ✓ Output shape correcto: {out['pred_logits'].shape}") # Debería ser [2, 300, 6]
-        print("   ✅ Safety Check SUPERADO. Iniciando entrenamiento.\n")
-    else:
-        print(f"   ⚠️ Output inesperado: {type(out)}")
-except Exception as e:
-    print(f"\n❌ ERROR EN SAFETY CHECK: {e}")
-    print("   Revisa el wrapper y el módulo de fusión antes de entrenar.")
-    exit()
+    if not results:
+        print(" ⚠️ No detections found!")
+        return [0.0] * 12
 
-for epoch in range(epochs):
-    print(f"\n{'='*70}")
-    print(f"Epoch {epoch+1}/{epochs}")
-    print(f"{'='*70}")
+    import contextlib
+    import io
+    with contextlib.redirect_stdout(io.StringIO()):
+        coco_dt = coco_gt.loadRes(results)
+        coco_eval = COCOeval(coco_gt, coco_dt, "bbox")
+        coco_eval.evaluate()
+        coco_eval.accumulate()
+        coco_eval.summarize()
     
-    # Train
-    model.train()
-    model.deimv2.eval()
+    print(f" Done! -> mAP: {coco_eval.stats[0]:.4f}")
+    return coco_eval.stats.tolist()
+
+def main():
+    print("\n" + "="*70)
+    print(f"FASE 2: Entrenamiento Multimodal (TEST RUN: {EPOCHS} Epochs)")
+    print("="*70)
+
+    # 1. SETUP DE DATOS Y TEXTO
+    print("\n📝 Generando embeddings de texto...")
+    text_encoder = TextEncoder(freeze=True).to(DEVICE)
+    prompts = get_text_prompts()
+    text_embeddings = text_encoder.encode_texts(prompts, DEVICE)
+    print(f"✅ Embeddings listos: {text_embeddings.shape}")
+
+    # 2. CONSTRUCCIÓN DEL MODELO
+    print("\n🏗️  Construyendo DEIMv2 + Fusión...")
+    model = build_deimv2_with_fusion(
+        checkpoint_path=CHECKPOINT_SOURCE,
+        config_path=CONFIG_PATH,
+        text_embeddings=text_embeddings,
+        device=DEVICE
+    )
     
-    epoch_loss = 0
-    for i, (images, targets) in enumerate(train_loader):
-        images = images.to(device)
-        targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+    # 3. SETUP TRAINING
+    optimizer = torch.optim.AdamW(
+        [p for p in model.fusion.parameters() if p.requires_grad],
+        lr=1e-4, weight_decay=1e-4
+    )
+
+    # Cargar Dataloaders
+    # Al haber hecho los imports arriba, ahora 'cfg.train_dataloader' funcionará
+    cfg = YAMLConfig(CONFIG_PATH)
+    
+    # Forzar workers a 0 por seguridad
+    if 'train_dataloader' in cfg.yaml_cfg:
+        cfg.yaml_cfg['train_dataloader']['num_workers'] = 0
+    if 'val_dataloader' in cfg.yaml_cfg:
+        cfg.yaml_cfg['val_dataloader']['num_workers'] = 0
+    
+    print("\n📦 Construyendo Dataloaders (esto puede tardar unos segundos)...")
+    train_loader = cfg.train_dataloader
+    val_loader = cfg.val_dataloader
+    print(f"✅ Dataloaders listos. Batches train: {len(train_loader)}")
+    
+    criterion = cfg.criterion.to(DEVICE)
+    postprocessor = cfg.postprocessor
+    
+    # Filtros de seguridad para losses
+    if hasattr(criterion, 'aux_loss'): criterion.aux_loss = False
+    classification_losses = ['focal', 'vfl', 'mal', 'ce', 'class', 'labels'] 
+    criterion.losses = [l for l in criterion.losses if l in classification_losses]
+    
+    print(f"🔧 Losses activas: {criterion.losses}")
+    if not criterion.losses:
+        raise RuntimeError("❌ ERROR CRÍTICO: Todas las losses filtradas.")
+
+    # 4. LOOP
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    log_path = os.path.join(OUTPUT_DIR, "log.txt")
+    with open(log_path, "w") as f: pass
+
+    print(f"\n🚀 Iniciando entrenamiento -> Output: {OUTPUT_DIR}\n")
+    
+    for epoch in range(EPOCHS):
+        model.train()
+        model.deimv2.eval() 
         
-        optimizer.zero_grad()
+        epoch_loss = 0.0
         
-        # Forward
-        if scaler is not None:
-            with torch.amp.autocast('cuda'):
-                outputs = model(images, targets)
-                losses = criterion(outputs, targets)
-                loss = sum(losses.values())
-        else:
+        for i, (images, targets) in enumerate(train_loader):
+            images = images.to(DEVICE)
+            targets = [{k: v.to(DEVICE) for k, v in t.items()} for t in targets]
+            
+            optimizer.zero_grad()
+            
             outputs = model(images, targets)
-            losses = criterion(outputs, targets)
-            loss = sum(losses.values())
-        
-        # Backward
-        if scaler is not None:
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
-        else:
+            loss_dict = criterion(outputs, targets)
+            loss = sum(loss_dict.values())
+            
             loss.backward()
             optimizer.step()
+            
+            epoch_loss += loss.item()
+            
+            if (i+1) % 10 == 0:
+                print(f"  Epoch {epoch+1} | Batch {i+1}/{len(train_loader)} | Loss: {loss.item():.4f}")
+
+        avg_loss = epoch_loss / len(train_loader)
         
-        epoch_loss += loss.item()
-        
-        if (i + 1) % 10 == 0:
-            print(f"  Batch {i+1}/{len(train_loader)}: loss={loss.item():.4f}")
-    
-    avg_loss = epoch_loss / len(train_loader)
-    print(f"\n📊 Epoch {epoch+1} - Avg Loss: {avg_loss:.4f}")
-    
-    # Eval cada 5 epochs
-    if (epoch + 1) % 5 == 0 or epoch == 0:
-        print(f"\n🔍 Evaluando...")
-        model.eval()
-        
-        # TODO: Implementar evaluación COCO
-        # Por ahora solo guardar checkpoint
-        
-        checkpoint = {
+        # Validación
+        coco_stats = [0.0]*12
+        if (epoch + 1) == EPOCHS or (epoch + 1) % 5 == 0:
+            print(f"🔍 Validando Epoch {epoch+1}...")
+            coco_stats = evaluate_coco_map(model, val_loader, DEVICE, postprocessor)
+            
+            torch.save({
+                'epoch': epoch + 1,
+                'model': model.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'mAP': coco_stats[0]
+            }, f"{OUTPUT_DIR}/checkpoint_epoch{epoch+1}.pth")
+
+        print(f"📊 Summary Epoch {epoch+1}: Avg Loss={avg_loss:.4f} | mAP={coco_stats[0]:.4f}")
+
+        log_entry = {
             'epoch': epoch + 1,
-            'model': model.state_dict(),
-            'optimizer': optimizer.state_dict(),
-            'loss': avg_loss
+            'train_lr': optimizer.param_groups[0]['lr'],
+            'train_loss': avg_loss,
+            'train_loss_mal': avg_loss,
+            'train_loss_bbox': 0.0,
+            'train_loss_giou': 0.0,
+            'train_loss_fgl': 0.0,
+            'test_coco_eval_bbox': coco_stats
         }
         
-        torch.save(checkpoint, f"{output_dir}/checkpoint_epoch{epoch+1}.pth")
-        print(f"💾 Checkpoint guardado: epoch {epoch+1}")
+        with open(log_path, "a") as f:
+            f.write(json.dumps(log_entry) + "\n")
 
-# Guardar final
-torch.save({
-    'epoch': epochs,
-    'model': model.state_dict(),
-    'optimizer': optimizer.state_dict(),
-}, f"{output_dir}/final.pth")
+    torch.save(model.state_dict(), f"{OUTPUT_DIR}/final.pth")
+    print(f"\n✅ Prueba completada.")
 
-print(f"\n✅ Entrenamiento completado")
-print(f"   Checkpoints en: {output_dir}")
-print("="*70 + "\n")
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,88 @@
+Estrategia de Implementación: Fine-tuning Progresivo Multimodal (Opción 3)
+1. Fundamentación Científica: El Problema del "Olvido Catastrófico"
+Para la Memoria Técnica, el argumento central de esta fase se basa en el equilibrio entre Plasticidad (capacidad de aprender nueva información multimodal) y Estabilidad (capacidad de retener el conocimiento visual previo).
+
+El Desafío
+Entrenar una red neuronal profunda que ya ha convergido (tu DEIMv2 con mAP 0.785) junto con módulos nuevos inicializados aleatoriamente (el módulo de fusión) presenta un riesgo conocido como Catastrophic Forgetting (Olvido Catastrófico). Si permitimos que los gradientes fluyan libremente por toda la red desde el principio, el "ruido" inicial del módulo de fusión, que aún no ha aprendido nada, puede destruir los pesos finamente ajustados del detector y del backbone DINOv3.
+
+La Solución: Progressive Unfreezing
+La estrategia adoptada se basa en la técnica de Descongelamiento Progresivo (Progressive Unfreezing), popularizada en NLP por Howard & Ruder (ULMFit, 2018) y adaptada recientemente a modelos de Visión-Lenguaje (VLM).
+
+La hipótesis científica es que las diferentes capas de la red aprenden características a diferentes niveles de abstracción:
+
+Backbone (DINOv3): Características visuales universales y robustas. Se deben preservar a toda costa.
+
+Detector (DEIMv2 Decoder): Lógica específica de detección de defectos. Requiere adaptación leve.
+
+Fusión Multimodal: Nueva lógica semántica. Requiere entrenamiento intensivo.
+
+Al descongelar la red por etapas, minimizamos el shock de los gradientes y garantizamos que la convergencia multimodal ocurra sin degradar la capacidad de detección base.
+
+2. Implementación Técnica por Fases
+Aquí se detalla cómo se traduce la teoría al código que hemos generado en train_progressive.py.
+
+FASE 1: "Warm-up" de la Fusión (Alineación Inicial)
+Objetivo: Inicializar los pesos del módulo de fusión para que las proyecciones visuales y textuales empiecen a alinearse, sin perturbar al detector.
+
+Configuración Técnica:
+
+Congelado: Backbone DINOv3 y Detector DEIMv2 completo.
+
+Entrenable: Solo MultimodalFusionModule.
+
+Learning Rate: Moderado (0.0002).
+
+Justificación: El módulo de fusión comienza con pesos aleatorios. Entrenarlo aislado fuerza al módulo a encontrar relaciones entre las features visuales congeladas (que ya son buenas) y los embeddings de texto de CLIP, creando un "puente" estable antes de tocar el resto de la red.
+
+FASE 2: Fine-tuning de la Cabecera (Integración Semántica)
+Objetivo: Permitir que las cabeceras de clasificación del detector (score_head) ajusten sus fronteras de decisión basándose en la nueva información multimodal.
+
+Configuración Técnica:
+
+Congelado: Backbone DINOv3 y Encoder/Decoder de DEIMv2 (capas de atención).
+
+Entrenable: MultimodalFusionModule + Cabeceras de clasificación (class_embed/score_head).
+
+Learning Rate: Bajo (0.00005).
+
+Justificación: Una vez que la fusión es estable (Fase 1), permitimos que el clasificador final se "relaje" y modifique ligeramente sus predicciones para aprovechar el contexto semántico (ej. distinguir "ROTURA" de "RAYONES" usando la descripción textual).
+
+FASE 3 (Opcional): Ajuste Fino Global
+Objetivo: Pulido final de todo el sistema.
+
+Configuración Técnica: Se descongela el Decoder completo con un LR muy bajo (0.00002), manteniendo el backbone DINOv3 siempre congelado para actuar como ancla de estabilidad.
+
+3. Justificación de la Arquitectura de Software
+Para la memoria, es crucial explicar por qué hemos reescrito el bucle de entrenamiento en lugar de usar el train.py original de DEIMv2.
+
+Limitación Detectada: El framework original DEIMv2 utiliza un sistema de inyección de dependencias rígido (YAMLConfig, engine.core) diseñado para entrenamiento end-to-end estándar. Intentar inyectar lógica de congelación dinámica y módulos externos (CLIP) dentro de su Trainer monolítico generaba conflictos de registro (errores KeyError: '_pymodule', problemas con ToTensor vs ConvertPILImage) y dificultaba el control granular de los gradientes.
+
+Solución Implementada: Se ha desarrollado un Bucle de Entrenamiento Personalizado (train_progressive.py) que:
+
+Desacopla la lógica: Utiliza los componentes de DEIMv2 (modelos, dataloaders, losses) como librerías, pero controla el flujo de ejecución explícitamente.
+
+Gestión de Estado: Permite cargar un checkpoint, modificar los flags requires_grad capa por capa (congelación quirúrgica) y continuar el entrenamiento, algo imposible con el script original sin reescribir el motor base.
+
+Modularidad: Integra TextEncoder (CLIP) y MultimodalFusion como módulos independientes, facilitando la experimentación sin romper el núcleo de DEIMv2.
+
+4. Texto Propuesto para la Memoria Técnica
+Puedes adaptar el siguiente fragmento para tu documento final:
+
+4.X Estrategia de Entrenamiento Multimodal: Descongelamiento Progresivo
+
+Para la integración del módulo multimodal en la arquitectura DEIMv2, se descartó el entrenamiento conjunto desde cero (training from scratch) debido al alto coste computacional y al riesgo de perder las capacidades de detección ya adquiridas (mAP 0.785). En su lugar, se implementó una estrategia de Fine-tuning Progresivo (Progressive Unfreezing), inspirada en metodologías de transferencia de aprendizaje en modelos de lenguaje y visión (Howard & Ruder, 2018).
+
+Esta metodología aborda el problema del Catastrophic Forgetting, donde la optimización abrupta de nuevos parámetros aleatorios distorsiona las representaciones latentes preentrenadas. El proceso se dividió en tres fases estratégicas:
+
+Fase 1 (Warm-up): Entrenamiento exclusivo del módulo de proyección y fusión. El objetivo es alinear el espacio latente visual (congelado) con los embeddings textuales de CLIP, estabilizando los gradientes antes de propagarlos al detector.
+
+Fase 2 (Adaptación del Clasificador): Se descongelan selectivamente las cabeceras de clasificación (classification heads) del detector. Esto permite que las fronteras de decisión de las clases (ej. defectos similares morfológicamente pero semánticamente distintos) se reajusten utilizando la señal enriquecida por el texto.
+
+Fase 3 (Refinamiento): Ajuste fino global con una tasa de aprendizaje reducida (low learning rate) para maximizar la sinergia entre la extracción de características visuales y la interpretación semántica.
+
+A nivel de implementación, se desarrolló un training loop personalizado que orquesta la congelación dinámica de capas y la inyección de embeddings textuales, superando las limitaciones estáticas del framework de entrenamiento original de DEIMv2.
+
+Siguientes Pasos Inmediatos
+Con esta base teórica clara y el código arreglado en la respuesta anterior (train_progressive.py y configs corregidos), estás listo para lanzar la Fase 1 (Warm-up). Esto generará las primeras métricas que validarán si la fusión está aprendiendo sin romper el modelo base.
+
+Fuentes: [1] demo-Multimodal/FASE2_Estrategias_Implementacion.md [2] Luo, Y., et al. (2023). An Empirical Study of Catastrophic Forgetting in Large Language Models. [3] intellindust-ai-lab/deimv2/DEIMv2-09d7c9d2b3e7c4c8ce5149daf2623b03d7e5ca75/engine/core/yaml_config.py [4] intellindust-ai-lab/deimv2/DEIMv2-09d7c9d2b3e7c4c8ce5149daf2623b03d7e5ca75/engine/core/workspace.py [5] intellindust-ai-lab/deimv2/DEIMv2-09d7c9d2b3e7c4c8ce5149daf2623b03d7e5ca75/train.py [6] intellindust-ai-lab/deimv2/DEIMv2-09d7c9d2b3e7c4c8ce5149daf2623b03d7e5ca75/engine/data/transforms/container.py [7] intellindust-ai-lab/deimv2/DEIMv2-09d7c9d2b3e7c4c8ce5149daf2623b03d7e5ca75/engine/data/transforms/_transforms.py
