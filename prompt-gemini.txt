@@ -302,3 +302,4 @@ Te dejo por aqui compartidos los logs de la experimentacion al haber lanzado est
 
 
 Si crees que va a ser muy complicado con esta opcion de mejora superar las metricas base con el modelo entrenado con deimv2, entonces podrías directamente despues de un largo razonamiento del problema a atacar comunicármelo directamente para que yo pueda dar por concluida toda la fase de desarrollo y experimentacion de mi proyecto y poder continuar con la documentacion de la linea de investigación completa indicando también los resultados e implementaciones de esta fase 2 aunque hayan sido malos resultados comparados con las mejores métrics conseguidas.
+
