@@ -10,9 +10,9 @@ output_dir: ./outputs/fase2_progressive_auto
 # -----------------------------------------------------------------
 automation:
   baseline_map: 0.785   # Tu récord actual (Visual puro). Intentaremos batirlo.
-  patience: 6           # Cuántas épocas esperar si no mejora antes de parar.
+  patience: 20           # Cuántas épocas esperar si no mejora antes de parar.
   min_delta: 0.001      # Mínima mejora requerida para considerar que "ha mejorado".
-  max_epochs: 50        # Límite máximo de seguridad.
+  max_epochs: 100        # Límite máximo de seguridad.
 
 # -----------------------------------------------------------------
 # 2. DATASETS
@@ -27,7 +27,7 @@ train_dataloader:
         - {type: ConvertPILImage, dtype: 'float32', scale: True}
         - {type: Normalize, mean: [0.485, 0.456, 0.406], std: [0.229, 0.224, 0.225]}
   shuffle: True
-  total_batch_size: 2
+  total_batch_size: 8
   num_workers: 4
 
 val_dataloader:
@@ -40,7 +40,7 @@ val_dataloader:
         - {type: ConvertPILImage, dtype: 'float32', scale: True}
         - {type: Normalize, mean: [0.485, 0.456, 0.406], std: [0.229, 0.224, 0.225]}
   shuffle: False
-  total_batch_size: 4
+  total_batch_size: 8
   num_workers: 4
 
 # -----------------------------------------------------------------

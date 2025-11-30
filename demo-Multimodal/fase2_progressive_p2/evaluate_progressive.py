@@ -33,13 +33,25 @@ from models_utils.multimodal_fusion import MultimodalFusionModule
 from models_utils.deimv2_multimodal import DEIMv2Multimodal
 
 # --- PROMPTS (Mismos que training) ---
+# Nuevos Prompts enfocados en características visuales distintivas
 TEXT_PROMPTS = [
-    "Normal, clean surface without defects",
-    "Surface deformation, dent or irregularity",
-    "Fracture, crack, broken material or rupture",
-    "Scratch, surface abrasion or line mark",
-    "Perforation, hole or drilled spot",
-    "Contamination, dirt, stain or foreign particle"
+    # 0: NORMAL
+    "Flawless industrial metal surface, uniform texture, no anomalies, clean background.",
+    
+    # 1: DEFORMACIONES (Enfocarse en cambios de luz/geometría)
+    "Dented metal surface, uneven geometry, warped area with light reflection distortion.",
+    
+    # 2: ROTURA_FRACTURA (Enfocarse en bordes irregulares y separación)
+    "Fractured material, jagged edges, deep structural crack, broken component part with separation.",
+    
+    # 3: RAYONES_ARANAZOS (Enfocarse en linealidad y superficie)
+    "Linear surface scratch, thin scored line, metal abrasion mark, surface scar.",
+    
+    # 4: PERFORACIONES (Enfocarse en contraste y forma circular)
+    "Circular hole, drilled puncture, dark void spot, penetrating opening in material.",
+    
+    # 5: CONTAMINACION (Enfocarse en color y superposición)
+    "Surface stain, oil residue, dirt patch, foreign discoloration spot on metal."
 ]
 
 def load_multimodal_model(checkpoint_path, config_path, device):

@@ -38,13 +38,25 @@ from models_utils.text_encoder import TextEncoder
 from models_utils.multimodal_fusion import MultimodalFusionModule
 from models_utils.deimv2_multimodal import DEIMv2Multimodal
 
+# Nuevos Prompts enfocados en características visuales distintivas
 TEXT_PROMPTS = [
-    "Normal, clean surface without defects",
-    "Surface deformation, dent or irregularity",
-    "Fracture, crack, broken material or rupture",
-    "Scratch, surface abrasion or line mark",
-    "Perforation, hole or drilled spot",
-    "Contamination, dirt, stain or foreign particle"
+    # 0: NORMAL
+    "Flawless industrial metal surface, uniform texture, no anomalies, clean background.",
+    
+    # 1: DEFORMACIONES (Enfocarse en cambios de luz/geometría)
+    "Dented metal surface, uneven geometry, warped area with light reflection distortion.",
+    
+    # 2: ROTURA_FRACTURA (Enfocarse en bordes irregulares y separación)
+    "Fractured material, jagged edges, deep structural crack, broken component part with separation.",
+    
+    # 3: RAYONES_ARANAZOS (Enfocarse en linealidad y superficie)
+    "Linear surface scratch, thin scored line, metal abrasion mark, surface scar.",
+    
+    # 4: PERFORACIONES (Enfocarse en contraste y forma circular)
+    "Circular hole, drilled puncture, dark void spot, penetrating opening in material.",
+    
+    # 5: CONTAMINACION (Enfocarse en color y superposición)
+    "Surface stain, oil residue, dirt patch, foreign discoloration spot on metal."
 ]
 
 def setup_scientific_logger(output_dir):
@@ -60,8 +72,9 @@ def setup_scientific_logger(output_dir):
     logger.addHandler(ch)
     return logger
 
+# Sustituye TU función evaluate_detailed por esta versión corregida
 @torch.no_grad()
-def evaluate_model(model, coco_gt, img_folder, device, score_thresh=0.01):
+def evaluate_detailed(model, coco_gt, img_folder, device, score_thresh=0.01):
     model.eval()
     results = []
     transform = T.Compose([
@@ -69,8 +82,9 @@ def evaluate_model(model, coco_gt, img_folder, device, score_thresh=0.01):
         T.ToTensor(),
         T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
-    img_ids = sorted(coco_gt.getImgIds())
     
+    # 1. INFERENCIA (Igual que antes)
+    img_ids = sorted(coco_gt.getImgIds())
     for img_id in img_ids:
         info = coco_gt.loadImgs(img_id)[0]
         path = os.path.join(img_folder, info['file_name'])
@@ -78,16 +92,15 @@ def evaluate_model(model, coco_gt, img_folder, device, score_thresh=0.01):
             img = Image.open(path).convert('RGB')
         except Exception:
             continue
-
+        
         h_orig, w_orig = info['height'], info['width']
         input_tensor = transform(img).unsqueeze(0).to(device)
-        
         outputs = model(input_tensor)
         if 'pred_logits' not in outputs: continue
-            
+
         pred_logits = outputs['pred_logits'][0]
         pred_boxes = outputs['pred_boxes'][0]
-        
+
         scores = pred_logits.softmax(-1).max(-1)[0]
         labels = pred_logits.softmax(-1).argmax(-1)
         
@@ -99,7 +112,7 @@ def evaluate_model(model, coco_gt, img_folder, device, score_thresh=0.01):
         
         scores = scores.cpu()
         labels = labels.cpu()
-        
+
         for box, score, label in zip(boxes, scores, labels):
             if label < 6 and score >= score_thresh:
                 results.append({
@@ -108,15 +121,57 @@ def evaluate_model(model, coco_gt, img_folder, device, score_thresh=0.01):
                     'bbox': box.tolist(),
                     'score': float(score)
                 })
-                
-    if not results: return 0.0
 
+    if not results: 
+        return {'mAP': 0.0, 'recall_critical': 0.0, 'full_stats': []}
+
+    # 2. EVALUACIÓN GLOBAL
     coco_dt = coco_gt.loadRes(results)
     coco_eval = COCOeval(coco_gt, coco_dt, 'bbox')
     coco_eval.evaluate()
     coco_eval.accumulate()
-    coco_eval.summarize()
-    return float(coco_eval.stats[0])
+    coco_eval.summarize() # Esto rellena stats global
+    
+    stats = coco_eval.stats
+    map_global = float(stats[0]) # mAP 0.5:0.95
+    
+    # 3. EVALUACIÓN POR CLASE CRÍTICA (CORREGIDO)
+    critical_class_ids = [2, 3, 5] # Rotura, Rayones, Contaminacion
+    recalls = []
+    
+    # Redirigir stdout para silenciar summarize() dentro del bucle (opcional pero recomendado)
+    import io
+    from contextlib import redirect_stdout
+    
+    print("   🔎 Calculando métricas específicas por clase...")
+    for cat_id in critical_class_ids:
+        coco_eval_cat = COCOeval(coco_gt, coco_dt, 'bbox')
+        coco_eval_cat.params.catIds = [cat_id]
+        coco_eval_cat.evaluate()
+        coco_eval_cat.accumulate()
+        
+        # --- CORRECCIÓN AQUÍ: Llamar a summarize() ---
+        # Usamos un 'trap' para que no imprima 3 bloques de texto gigantes en consola
+        f = io.StringIO()
+        with redirect_stdout(f):
+            coco_eval_cat.summarize()
+        
+        # Ahora stats ya tiene datos. stats[8] es AR maxDets=100
+        if coco_eval_cat.stats is not None and len(coco_eval_cat.stats) > 8:
+            r_val = coco_eval_cat.stats[8]
+            recalls.append(r_val)
+            # Imprimir bonito para que veas qué pasa
+            print(f"      > Clase {cat_id}: Recall={r_val:.4f}")
+        else:
+            recalls.append(0.0)
+    
+    avg_recall_critical = sum(recalls) / len(recalls) if recalls else 0.0
+    
+    return {
+        'mAP': map_global, 
+        'recall_critical': avg_recall_critical,
+        'full_stats': stats
+    }
 
 def train_one_epoch(model, loader, optimizer, criterion, device, epoch, logger):
     model.train()
@@ -224,34 +279,50 @@ def main(args):
     logger.info("📚 Cargando Ground Truth...")
     coco_gt = COCO(args.test_ann)
 
-    best_map = 0.0
     patience_counter = 0
     start_epoch = 0
+
+    best_score_composite = 0.0 # Score combinado
     
     for epoch in range(start_epoch, max_epochs):
+        # --- [INICIO] BLOQUE RESTAURADO ---
         logger.info(f"\n🌀 EPOCH {epoch+1}/{max_epochs}")
         
+        # Esta es la línea mágica que hace que el modelo aprenda:
         avg_loss = train_one_epoch(model, train_loader, optimizer, criterion, device, epoch, logger)
+        
         logger.info(f"   📉 Training Loss: {avg_loss:.4f}")
+        # --- [FIN] BLOQUE RESTAURADO ---
         
-        logger.info("   🔎 Evaluando en Test Set...")
-        current_map = evaluate_model(model, coco_gt, args.test_imgs, device)
-        logger.info(f"   📈 mAP Actual: {current_map:.4f} (Récord: {best_map:.4f})")
+        logger.info("   🔎 Evaluando métricas detalladas...")
+        metrics = evaluate_detailed(model, coco_gt, args.test_imgs, device)
         
-        improved = current_map > (best_map + min_delta)
+        curr_map = metrics['mAP']
+        curr_recall = metrics['recall_critical']
         
-        if improved:
-            best_map = current_map
-            patience_counter = 0 
-            save_name = f"best_phase2_auto_mAP_{best_map:.4f}.pth"
+        logger.info(f"   📊 mAP: {curr_map:.4f} | Recall (Críticas): {curr_recall:.4f}")
+        
+        # --- LÓGICA DE DECISIÓN HÍBRIDA ---
+        # Definimos que el éxito es una combinación: 70% mAP + 30% Recall Crítico
+        # Esto permite que si el mAP baja un poco pero el Recall sube mucho, guarde el modelo.
+        current_score = (curr_map * 0.7) + (curr_recall * 0.3)
+        
+        if current_score > (best_score_composite + min_delta):
+            best_score_composite = current_score
+            patience_counter = 0
+            
+            save_name = f"best_phase2_hybrid_ep{epoch}_score{best_score_composite:.4f}.pth"
             save_path = os.path.join(output_dir, save_name)
-            torch.save({'model': model.state_dict(), 'epoch': epoch, 'mAP': best_map}, save_path)
-            logger.info(f"   🏆 ¡NUEVO RÉCORD! Guardado en: {save_name}")
-            if best_map > baseline_map:
-                logger.info(f"   🔥 SUPERADO EL BASELINE ORIGINAL ({baseline_map}) 🔥")
+            torch.save({
+                'model': model.state_dict(),
+                'epoch': epoch,
+                'metrics': metrics
+            }, save_path)
+            
+            logger.info(f"   🏆 ¡MEJORA DETECTADA! (Score: {best_score_composite:.4f}) Guardado.")
         else:
             patience_counter += 1
-            logger.info(f"   ⏳ Sin mejora. Paciencia: {patience_counter}/{patience_limit}")
+            logger.info(f"   ⏳ Sin mejora compuesta. Paciencia: {patience_counter}/{patience_limit}")
         
         if patience_counter >= patience_limit:
             logger.info("\n🛑 EARLY STOPPING ACTIVADO")

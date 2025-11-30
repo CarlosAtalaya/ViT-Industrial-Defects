@@ -37,13 +37,9 @@ Se obtienen mejoras en recall, precisión y robustez, especialmente en defectos 
 
 El punto actualizado en el que me he encuentro ahora mismo es haber poddido completar con mucho éxito la fase 1.
 Para que contextualices muy bien, dentro mi proyecto en el documento demo-Multimodal/FASE2_Estrategias_Implementacion.md se especifica un poco más en detalle cuáles eran los pasos a seguir para esta fase 2.
-Para poder continuar con todo esto, quiero que contextualices muy bien todo lo que te he ido compartiendo como los proyectos o repositorios en github (mi proyecto llamado https://github.com/CarlosAtalaya/ViT-Industrial-Defects como el proyecto de deimv2 https://github.com/Intellindust-AI-Lab/DEIMv2).
-La fase 2 la he podido implementar pero con algunas deficiencias.He intentado poner en marcha la opcion 1 pero ha sido bastante complicado hacer esa iteración rápida debido a la rigidez del código base de DEIMV2.
-Por lo que ahora querría comenzar con la opción 3, y toda la estrategia de implementación está muy bien detallado en los siguientes documentos:
-demo-Multimodal/fase2_progressive_p2/estrategia-implementacion-opcion3.txt
-demo-Multimodal/fase2_progressive_p2/option3-implementation-guide.txt
+Existe un documento que te dejo abajo de referencia donde se indican los pasos a continuar con esta nueva fase de entrenamiento progresivo debido a una deficiencia de los resultados (proximos-pasos-y-resultados-experimentacion.txt).
 
-Además para poder realizar esta nueva opcion, quiero que tengas muy en cuenta la carpeta scripts/deimv2_multimodal/ con todos sus módulos para que te fijes sobretodo en las funcionalidades de generar un log.txt para luego poder extraer metricas de entrenameinto y cómo se procede con la parte de evaluación del modelo. Es muy importante que para esta opcion 3, evluando los resultados del entrenamiento sobre el conjunto de test me pueda sacar un fichero como el que sacan los modulos de evaluacion tipo:
+Es muy importante que para esta opcion 3 tengas en cuenta las metricas obtenidas del modelo baseline:
 test_evaluation_results_comparable.json:
 {
 "mAP": 0.7849257373114362,
@@ -96,7 +92,6 @@ Sin sobre-recomendaciones: Limitar consejos adicionales no solicitados
 Enfoque pragmático: Código funcional > explicaciones extensas
 DINOv3 es la arquitectura objetivo: No cuestionar esta decisión, es la versión actual a usar.
 
-Para poder continuar 
 
 Hardware
 
@@ -104,6 +99,8 @@ GPU: RTX 4070 (12GB VRAM)
 RAM: 12GB
 
 Documentación de Referencia
+
+* Documento indicando cómo ha ido la implementacion de fase2_progressive_p2 y cómo se podría continuar: proximos-pasos-y-resultados-experimentacion.txt
 
 * Documentos de referencia para proceder a la implementacion de esta fase 2 con la opcion 3: estrategia-implementacion-opcion3.txt option3-implementation-guide.txt
 
@@ -114,3 +111,194 @@ Este es el documento más importante donde se detalla un poco las siguientes fas
 Este docuemnto está actualizado con este punto el que me encuentro, en el de haber completado la fase 1. Hay mucha literatura de mi estado actual con mucha informacion, por lo que ahora mismo es uno de los documentos de referencia de mi proyecto.
 
 *Nota : Este es un proyecto técnico avanzado. El usuario tiene experiencia en ML y busca asistencia específica, no tutoriales básicos. Responde de forma directa y eficiente.
+
+
+Por favor con todo este contexto del proyecto quiero que em ayudes a continuar con la fase 2 en esta implementación de entrenameinto progresivo a partir de un checkpoint base. Todo el código referente está dentro del repositorio https://github.com/CarlosAtalaya/ViT-Industrial-Defects en la carpeta demo-Multimodal/fase2_progressive_p2/.
+El ultimo main de ejecucion automatizada de este entrenamiento progresivo es el modulo train_auto_phase2.py.
+Te dejo por aqui compartidos los logs de la experimentacion al haber lanzado este modulo por ultima vez:
+
+[13:34:54] INFO: ============================================================
+[13:34:54] INFO: 🚀 INICIANDO PIPELINE AUTOMATIZADO - FASE 2
+[13:34:54] INFO: 🎯 Meta: Superar mAP 0.785
+[13:34:54] INFO: ============================================================
+[13:34:54] INFO: 🔧 Construyendo arquitectura multimodal...
+[13:34:58] INFO: 📥 Cargando resultado de Fase 1: /home/carlos/Escritorio/Proyectos_Personales/TFG_25-26/TFG-ViT/ViT/ViT-Industrial-Defects/outputs/fase2_progressive_p1/final.pth
+[13:34:58] INFO: ✅ Pesos cargados correctamente (strict=False para nuevos parámetros).
+[13:34:58] INFO: 🔓 Descongelando cabeceras de clasificación y módulo de fusión...
+[13:34:58] INFO: 📊 Parámetros entrenables: 141,088
+[13:34:58] INFO: 📚 Cargando Ground Truth...
+[13:34:58] INFO: 
+🌀 EPOCH 1/50
+[13:34:59] INFO:    [Epoch 0][Batch 0/358] Loss: 0.0017
+[13:35:01] INFO:    [Epoch 0][Batch 20/358] Loss: 48.7821
+[13:35:03] INFO:    [Epoch 0][Batch 40/358] Loss: 37.3154
+[13:35:06] INFO:    [Epoch 0][Batch 60/358] Loss: 60.2025
+[13:35:08] INFO:    [Epoch 0][Batch 80/358] Loss: 78.0930
+[13:35:11] INFO:    [Epoch 0][Batch 100/358] Loss: 0.0034
+[13:35:13] INFO:    [Epoch 0][Batch 120/358] Loss: 0.0202
+[13:35:15] INFO:    [Epoch 0][Batch 140/358] Loss: 33.1513
+[13:35:18] INFO:    [Epoch 0][Batch 160/358] Loss: 33.6080
+[13:35:20] INFO:    [Epoch 0][Batch 180/358] Loss: 56.4496
+[13:35:23] INFO:    [Epoch 0][Batch 200/358] Loss: 58.5042
+[13:35:25] INFO:    [Epoch 0][Batch 220/358] Loss: 58.7548
+[13:35:27] INFO:    [Epoch 0][Batch 240/358] Loss: 54.4379
+[13:35:30] INFO:    [Epoch 0][Batch 260/358] Loss: 51.7499
+[13:35:32] INFO:    [Epoch 0][Batch 280/358] Loss: 0.0150
+[13:35:35] INFO:    [Epoch 0][Batch 300/358] Loss: 26.2126
+[13:35:37] INFO:    [Epoch 0][Batch 320/358] Loss: 0.0147
+[13:35:39] INFO:    [Epoch 0][Batch 340/358] Loss: 47.2261
+[13:35:41] INFO:    📉 Training Loss: 32.5913
+[13:35:41] INFO:    🔎 Evaluando en Test Set...
+[13:36:08] INFO:    📈 mAP Actual: 0.6709 (Récord: 0.0000)
+[13:36:08] INFO:    🏆 ¡NUEVO RÉCORD! Guardado en: best_phase2_auto_mAP_0.6709.pth
+[13:36:08] INFO: 
+🌀 EPOCH 2/50
+[13:36:08] INFO:    [Epoch 1][Batch 0/358] Loss: 45.1344
+[13:36:11] INFO:    [Epoch 1][Batch 20/358] Loss: 24.1181
+[13:36:13] INFO:    [Epoch 1][Batch 40/358] Loss: 20.6496
+[13:36:16] INFO:    [Epoch 1][Batch 60/358] Loss: 0.0362
+[13:36:18] INFO:    [Epoch 1][Batch 80/358] Loss: 0.0711
+[13:36:20] INFO:    [Epoch 1][Batch 100/358] Loss: 0.0809
+[13:36:23] INFO:    [Epoch 1][Batch 120/358] Loss: 20.1032
+[13:36:25] INFO:    [Epoch 1][Batch 140/358] Loss: 19.6603
+[13:36:28] INFO:    [Epoch 1][Batch 160/358] Loss: 14.3862
+[13:36:30] INFO:    [Epoch 1][Batch 180/358] Loss: 30.4397
+[13:36:32] INFO:    [Epoch 1][Batch 200/358] Loss: 10.9721
+[13:36:35] INFO:    [Epoch 1][Batch 220/358] Loss: 14.6852
+[13:36:37] INFO:    [Epoch 1][Batch 240/358] Loss: 14.8502
+[13:36:40] INFO:    [Epoch 1][Batch 260/358] Loss: 15.9191
+[13:36:42] INFO:    [Epoch 1][Batch 280/358] Loss: 11.0909
+[13:36:44] INFO:    [Epoch 1][Batch 300/358] Loss: 26.9917
+[13:36:47] INFO:    [Epoch 1][Batch 320/358] Loss: 16.4721
+[13:36:49] INFO:    [Epoch 1][Batch 340/358] Loss: 28.5170
+[13:36:51] INFO:    📉 Training Loss: 16.2108
+[13:36:51] INFO:    🔎 Evaluando en Test Set...
+[13:37:18] INFO:    📈 mAP Actual: 0.6678 (Récord: 0.6709)
+[13:37:18] INFO:    ⏳ Sin mejora. Paciencia: 1/6
+[13:37:18] INFO: 
+🌀 EPOCH 3/50
+[13:37:18] INFO:    [Epoch 2][Batch 0/358] Loss: 13.9209
+[13:37:21] INFO:    [Epoch 2][Batch 20/358] Loss: 0.2590
+[13:37:23] INFO:    [Epoch 2][Batch 40/358] Loss: 12.7851
+[13:37:25] INFO:    [Epoch 2][Batch 60/358] Loss: 13.4201
+[13:37:28] INFO:    [Epoch 2][Batch 80/358] Loss: 0.2194
+[13:37:30] INFO:    [Epoch 2][Batch 100/358] Loss: 1.5632
+[13:37:33] INFO:    [Epoch 2][Batch 120/358] Loss: 12.0670
+[13:37:35] INFO:    [Epoch 2][Batch 140/358] Loss: 25.6197
+[13:37:38] INFO:    [Epoch 2][Batch 160/358] Loss: 12.7672
+[13:37:40] INFO:    [Epoch 2][Batch 180/358] Loss: 11.3337
+[13:37:43] INFO:    [Epoch 2][Batch 200/358] Loss: 0.2882
+[13:37:45] INFO:    [Epoch 2][Batch 220/358] Loss: 13.3965
+[13:37:47] INFO:    [Epoch 2][Batch 240/358] Loss: 11.4410
+[13:37:50] INFO:    [Epoch 2][Batch 260/358] Loss: 13.6700
+[13:37:52] INFO:    [Epoch 2][Batch 280/358] Loss: 21.8212
+[13:37:55] INFO:    [Epoch 2][Batch 300/358] Loss: 11.4308
+[13:37:57] INFO:    [Epoch 2][Batch 320/358] Loss: 0.2664
+[13:38:00] INFO:    [Epoch 2][Batch 340/358] Loss: 9.8866
+[13:38:02] INFO:    📉 Training Loss: 12.3124
+[13:38:02] INFO:    🔎 Evaluando en Test Set...
+[13:38:28] INFO:    📈 mAP Actual: 0.6662 (Récord: 0.6709)
+[13:38:28] INFO:    ⏳ Sin mejora. Paciencia: 2/6
+[13:38:28] INFO: 
+🌀 EPOCH 4/50
+[13:38:28] INFO:    [Epoch 3][Batch 0/358] Loss: 0.2177
+[13:38:31] INFO:    [Epoch 3][Batch 20/358] Loss: 15.1335
+[13:38:33] INFO:    [Epoch 3][Batch 40/358] Loss: 11.4526
+[13:38:35] INFO:    [Epoch 3][Batch 60/358] Loss: 13.6504
+[13:38:38] INFO:    [Epoch 3][Batch 80/358] Loss: 10.5408
+[13:38:40] INFO:    [Epoch 3][Batch 100/358] Loss: 21.7883
+[13:38:42] INFO:    [Epoch 3][Batch 120/358] Loss: 26.8441
+[13:38:45] INFO:    [Epoch 3][Batch 140/358] Loss: 0.1362
+[13:38:47] INFO:    [Epoch 3][Batch 160/358] Loss: 12.1066
+[13:38:50] INFO:    [Epoch 3][Batch 180/358] Loss: 10.9647
+[13:38:52] INFO:    [Epoch 3][Batch 200/358] Loss: 13.0940
+[13:38:54] INFO:    [Epoch 3][Batch 220/358] Loss: 10.6943
+[13:38:57] INFO:    [Epoch 3][Batch 240/358] Loss: 11.9321
+[13:38:59] INFO:    [Epoch 3][Batch 260/358] Loss: 0.0715
+[13:39:02] INFO:    [Epoch 3][Batch 280/358] Loss: 25.0663
+[13:39:04] INFO:    [Epoch 3][Batch 300/358] Loss: 0.2199
+[13:39:06] INFO:    [Epoch 3][Batch 320/358] Loss: 17.5347
+[13:39:09] INFO:    [Epoch 3][Batch 340/358] Loss: 13.5287
+[13:39:11] INFO:    📉 Training Loss: 11.4095
+[13:39:11] INFO:    🔎 Evaluando en Test Set...
+[13:39:37] INFO:    📈 mAP Actual: 0.6649 (Récord: 0.6709)
+[13:39:37] INFO:    ⏳ Sin mejora. Paciencia: 3/6
+[13:39:37] INFO: 
+🌀 EPOCH 5/50
+[13:39:38] INFO:    [Epoch 4][Batch 0/358] Loss: 6.5788
+[13:39:40] INFO:    [Epoch 4][Batch 20/358] Loss: 11.5291
+[13:39:42] INFO:    [Epoch 4][Batch 40/358] Loss: 11.5732
+[13:39:45] INFO:    [Epoch 4][Batch 60/358] Loss: 12.1264
+[13:39:47] INFO:    [Epoch 4][Batch 80/358] Loss: 11.4923
+[13:39:50] INFO:    [Epoch 4][Batch 100/358] Loss: 0.0783
+[13:39:52] INFO:    [Epoch 4][Batch 120/358] Loss: 10.7932
+[13:39:54] INFO:    [Epoch 4][Batch 140/358] Loss: 0.0574
+[13:39:57] INFO:    [Epoch 4][Batch 160/358] Loss: 12.0999
+[13:39:59] INFO:    [Epoch 4][Batch 180/358] Loss: 11.4097
+[13:40:02] INFO:    [Epoch 4][Batch 200/358] Loss: 10.6889
+[13:40:04] INFO:    [Epoch 4][Batch 220/358] Loss: 10.8993
+[13:40:06] INFO:    [Epoch 4][Batch 240/358] Loss: 12.3283
+[13:40:09] INFO:    [Epoch 4][Batch 260/358] Loss: 0.0826
+[13:40:11] INFO:    [Epoch 4][Batch 280/358] Loss: 0.0982
+[13:40:14] INFO:    [Epoch 4][Batch 300/358] Loss: 0.1095
+[13:40:16] INFO:    [Epoch 4][Batch 320/358] Loss: 0.0420
+[13:40:18] INFO:    [Epoch 4][Batch 340/358] Loss: 12.9358
+[13:40:20] INFO:    📉 Training Loss: 11.0943
+[13:40:20] INFO:    🔎 Evaluando en Test Set...
+[13:40:47] INFO:    📈 mAP Actual: 0.6630 (Récord: 0.6709)
+[13:40:47] INFO:    ⏳ Sin mejora. Paciencia: 4/6
+[13:40:47] INFO: 
+🌀 EPOCH 6/50
+[13:40:47] INFO:    [Epoch 5][Batch 0/358] Loss: 15.3244
+[13:40:50] INFO:    [Epoch 5][Batch 20/358] Loss: 13.1353
+[13:40:52] INFO:    [Epoch 5][Batch 40/358] Loss: 10.7034
+[13:40:55] INFO:    [Epoch 5][Batch 60/358] Loss: 10.7638
+[13:40:57] INFO:    [Epoch 5][Batch 80/358] Loss: 12.9219
+[13:41:00] INFO:    [Epoch 5][Batch 100/358] Loss: 13.3415
+[13:41:02] INFO:    [Epoch 5][Batch 120/358] Loss: 7.4213
+[13:41:05] INFO:    [Epoch 5][Batch 140/358] Loss: 14.2912
+[13:41:07] INFO:    [Epoch 5][Batch 160/358] Loss: 24.9098
+[13:41:09] INFO:    [Epoch 5][Batch 180/358] Loss: 13.1099
+[13:41:12] INFO:    [Epoch 5][Batch 200/358] Loss: 14.5197
+[13:41:14] INFO:    [Epoch 5][Batch 220/358] Loss: 0.1025
+[13:41:17] INFO:    [Epoch 5][Batch 240/358] Loss: 12.5485
+[13:41:19] INFO:    [Epoch 5][Batch 260/358] Loss: 0.1507
+[13:41:22] INFO:    [Epoch 5][Batch 280/358] Loss: 20.3578
+[13:41:24] INFO:    [Epoch 5][Batch 300/358] Loss: 11.2341
+[13:41:27] INFO:    [Epoch 5][Batch 320/358] Loss: 36.4632
+[13:41:29] INFO:    [Epoch 5][Batch 340/358] Loss: 0.0806
+[13:41:31] INFO:    📉 Training Loss: 10.6073
+[13:41:31] INFO:    🔎 Evaluando en Test Set...
+[13:41:58] INFO:    📈 mAP Actual: 0.6595 (Récord: 0.6709)
+[13:41:58] INFO:    ⏳ Sin mejora. Paciencia: 5/6
+[13:41:58] INFO: 
+🌀 EPOCH 7/50
+[13:41:58] INFO:    [Epoch 6][Batch 0/358] Loss: 0.0965
+[13:42:01] INFO:    [Epoch 6][Batch 20/358] Loss: 10.2382
+[13:42:03] INFO:    [Epoch 6][Batch 40/358] Loss: 12.4568
+[13:42:06] INFO:    [Epoch 6][Batch 60/358] Loss: 0.0799
+[13:42:08] INFO:    [Epoch 6][Batch 80/358] Loss: 21.5416
+[13:42:11] INFO:    [Epoch 6][Batch 100/358] Loss: 23.4153
+[13:42:13] INFO:    [Epoch 6][Batch 120/358] Loss: 0.1097
+[13:42:16] INFO:    [Epoch 6][Batch 140/358] Loss: 20.4415
+[13:42:18] INFO:    [Epoch 6][Batch 160/358] Loss: 21.8062
+[13:42:21] INFO:    [Epoch 6][Batch 180/358] Loss: 9.9577
+[13:42:23] INFO:    [Epoch 6][Batch 200/358] Loss: 10.3247
+[13:42:26] INFO:    [Epoch 6][Batch 220/358] Loss: 11.3031
+[13:42:28] INFO:    [Epoch 6][Batch 240/358] Loss: 0.1567
+[13:42:31] INFO:    [Epoch 6][Batch 260/358] Loss: 10.0909
+[13:42:33] INFO:    [Epoch 6][Batch 280/358] Loss: 19.5249
+[13:42:35] INFO:    [Epoch 6][Batch 300/358] Loss: 16.8642
+[13:42:38] INFO:    [Epoch 6][Batch 320/358] Loss: 15.1761
+[13:42:40] INFO:    [Epoch 6][Batch 340/358] Loss: 22.6140
+[13:42:43] INFO:    📉 Training Loss: 10.5033
+[13:42:43] INFO:    🔎 Evaluando en Test Set...
+[13:43:10] INFO:    📈 mAP Actual: 0.6571 (Récord: 0.6709)
+[13:43:10] INFO:    ⏳ Sin mejora. Paciencia: 6/6
+[13:43:10] INFO: 
+🛑 EARLY STOPPING ACTIVADO
+[13:43:10] INFO: ✅ Proceso finalizado.
+
+
+
+Si crees que va a ser muy complicado con esta opcion de mejora superar las metricas base con el modelo entrenado con deimv2, entonces podrías directamente despues de un largo razonamiento del problema a atacar comunicármelo directamente para que yo pueda dar por concluida toda la fase de desarrollo y experimentacion de mi proyecto y poder continuar con la documentacion de la linea de investigación completa indicando también los resultados e implementaciones de esta fase 2 aunque hayan sido malos resultados comparados con las mejores métrics conseguidas.
