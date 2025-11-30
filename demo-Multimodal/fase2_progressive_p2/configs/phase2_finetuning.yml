@@ -1,0 +1,72 @@
+# FASE 2: Fine-tuning (Descongela cabeceras del detector)
+__include__: [
+  '../../../scripts/deimv2_multimodal/configs/deimv2_industrial_defects.yml'
+]
+
+# Cambiamos el directorio de salida para no mezclar con Fase 1
+output_dir: ./outputs/fase2_progressive_p2
+
+# -----------------------------------------------------------------
+# 1. DATASETS (Igual que Fase 1)
+# -----------------------------------------------------------------
+train_dataloader: 
+  dataset: 
+    img_folder: curated_dataset_splitted_20251101_provisional_1st_version/train/images
+    ann_file: curated_dataset_splitted_20251101_provisional_1st_version/train/train.json
+    transforms:
+      ops:
+        - {type: Resize, size: [1024, 1024]}
+        - {type: ConvertPILImage, dtype: 'float32', scale: True}
+        - {type: Normalize, mean: [0.485, 0.456, 0.406], std: [0.229, 0.224, 0.225]}
+  shuffle: True
+  total_batch_size: 2
+  num_workers: 4
+
+val_dataloader:
+  dataset:
+    img_folder: curated_dataset_splitted_20251101_provisional_1st_version/val/images
+    ann_file: curated_dataset_splitted_20251101_provisional_1st_version/val/val.json
+    transforms:
+      ops:
+        - {type: Resize, size: [1024, 1024]}
+        - {type: ConvertPILImage, dtype: 'float32', scale: True}
+        - {type: Normalize, mean: [0.485, 0.456, 0.406], std: [0.229, 0.224, 0.225]}
+  shuffle: False
+  total_batch_size: 4
+  num_workers: 4
+
+# -----------------------------------------------------------------
+# 2. CONFIGURACIÓN DEL MODELO (FLAT CONFIG)
+# -----------------------------------------------------------------
+
+criterion: DEIMCriterion
+optimizer: AdamW
+
+DEIMCriterion:
+  matcher:
+    type: HungarianMatcher
+    weight_dict:
+      cost_class: 2.0
+      cost_bbox: 5.0
+      cost_giou: 2.0
+    use_focal_loss: True 
+    alpha: 0.25
+    gamma: 2.0
+  
+  weight_dict:
+    loss_class: 2.0
+    # Seguimos con bbox congelado porque nos centramos en clasificación multimodal
+    loss_bbox: 0.0  
+    loss_giou: 0.0
+    loss_vfl: 0.0
+    loss_focal: 2.0
+  losses: ['focal']
+
+AdamW:
+  # CAMBIO CRÍTICO: LR más bajo (5e-5) para ajuste fino
+  lr: 0.00005  
+  weight_decay: 0.0001
+
+DEIMTransformer:
+  num_classes: 6 
+  hidden_dim: 256

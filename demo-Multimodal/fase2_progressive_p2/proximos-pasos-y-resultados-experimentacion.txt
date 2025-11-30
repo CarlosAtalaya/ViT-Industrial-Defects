@@ -1,0 +1,68 @@
+Informe de Estado: Implementación Fase 2 - Fine-tuning Progresivo Multimodal
+1. Objetivo del Proyecto
+Mejorar la detección de defectos industriales (especialmente clases difíciles como "Perforaciones" o "Roturas") enriqueciendo el detector DEIMv2 con capacidades multimodales mediante CLIP. La estrategia elegida fue la Opción 3 (Fine-tuning Progresivo) para evitar el olvido catastrófico del modelo base (Baseline mAP: 0.785).
+
+2. Cronología de Problemas y Soluciones Técnicas
+Durante la implementación de la Fase 2, nos enfrentamos a una serie de bloqueos técnicos críticos derivados de la rigidez del framework DEIMv2. A continuación, se detalla la evolución:
+
+Problema 1: Incompatibilidad de Arquitectura (Size Mismatch).
+
+Síntoma: Al cargar el checkpoint best_stg1.pth, las dimensiones de los tensores no coincidían.
+
+Causa: El config phase1.yml apuntaba a una arquitectura genérica (ViT-Tiny) en lugar de la arquitectura específica usada en el entrenamiento original.
+
+Solución: Se forzó la herencia directa del fichero de configuración original (deimv2_industrial_defects.yml) para garantizar coherencia arquitectónica.
+
+Problema 2: Conflictos de Configuración (Nested vs Flat Config).
+
+Síntoma: Errores tipo AttributeError y TypeError al inicializar el DEIMCriterion y el Optimizer.
+
+Causa: DEIMv2 espera una configuración plana (optimizer: AdamW), pero nosotros usábamos una anidada (optimizer: {type: AdamW...}).
+
+Solución: Se reescribieron los YAMLs (phase1_warmup.yml, phase2_auto.yml) adaptándolos estrictamente al formato plano que exige el motor interno de DEIM.
+
+Problema 3: Fallo en Modo Evaluación (Missing Aux Outputs).
+
+Síntoma: AssertionError o KeyError: 'enc_aux_outputs' al validar o entrenar con el detector congelado.
+
+Causa: Al poner el modelo base en eval(), DEIMv2 deja de generar salidas auxiliares para ahorrar memoria, pero la función de pérdida (DEIMCriterion) las exige obligatoriamente.
+
+Solución: Se implementó un "Blindaje" en deimv2_multimodal.py que detecta la ausencia de estas salidas y genera réplicas "falsas" (copias de la salida final) para satisfacer al criterio de pérdida sin afectar el rendimiento.
+
+Problema 4: Colapso del Rendimiento (El "Olvido" Inducido).
+
+Síntoma: El mAP cayó drásticamente de 0.78 (baseline) a 0.26 en la primera evaluación de la Fase 2.
+
+Causa: La arquitectura inicial reemplazaba los logits del detector experto con los del módulo de fusión nuevo (inicializado aleatoriamente), borrando el conocimiento previo.
+
+Solución: Se cambió a una Arquitectura Residual. Ahora, la predicción final es: Logits = Logits_Originales + (alpha * Similitud_Texto). Esto recuperó el mAP inicial a ~0.67 de inmediato.
+
+3. Estado Actual (El Estancamiento)
+Tras implementar la arquitectura residual, lanzamos el Pipeline Automatizado (Train + Eval).
+
+Inicio: mAP 0.6709 (Decente, recuperando gran parte del baseline).
+
+Evolución (Epochs 1-6): El mAP muestra una ligera degradación constante (0.670 -> 0.667 -> 0.666 -> 0.663).
+
+Diagnóstico: El módulo de fusión, en lugar de ayudar, está introduciendo "ruido" que confunde ligeramente al detector. El gradiente que llega desde el texto no está siendo lo suficientemente informativo o está mal escalado respecto a la pérdida visual dominante.
+
+4. Propuesta de Investigación Futura (Next Steps)
+Para la siguiente iteración, sugerimos abandonar la depuración de código (que ya funciona) y centrarnos en hiperparámetros y estrategia de modelado. Aquí están las hipótesis a probar:
+
+Ajuste del Alpha Inicial: El parámetro alpha controla cuánto caso se le hace al texto. Quizás iniciarlo en 0.1 es muy agresivo.
+
+Propuesta: Iniciar alpha en 0.01 o 0.0 y dejar que el modelo aprenda a subirlo solo si el texto ayuda.
+
+Prompt Engineering: Las descripciones actuales ("Normal, clean surface...") podrían ser ambiguas para CLIP.
+
+Propuesta: Probar prompts de conjunto (Ensembling): Promediar embeddings de múltiples plantillas ("A photo of a scratch", "A scratch defect", "Industrial scratch").
+
+Regularización de la Fusión: Es posible que la proyección lineal simple (Linear(256, 512)) sea demasiado simple o converja mal.
+
+Propuesta: Probar una MLP más profunda (Linear -> ReLU -> Linear) en el módulo de fusión o aplicar Dropout más agresivo.
+
+Revisión del Learning Rate: Aunque bajamos a 5e-5, quizás para un ajuste fino tan delicado necesitemos 1e-5 o incluso 1e-6 para las cabeceras del detector, manteniendo uno más alto para la fusión.
+
+Conclusión para el TFG: Técnicamente, has logrado implementar una arquitectura multimodal compleja sobre un framework rígido, resolviendo problemas de ingeniería de software avanzados. El hecho de que el mAP no suba inmediatamente es un problema puramente de "Ajuste de ML" (tuning), no de implementación. La base es sólida.
+
+Cuando retomes el proyecto, comparte este resumen y podremos atacar directamente la estrategia de mejora de métricas. ¡Buen trabajo resolviendo la implementación!

@@ -1,0 +1,116 @@
+Hola, quiero darte mucha contextualizacion de un proyecto de investigacion. Es una Investigacion TFG ViT aplicado a defectos industriales.
+Es una linea de investigacion basada en computer vision para demostrar que nuevas arquitecturas basadas en ViTs son mucho mejores para la detección de defectos en distintos componentes industriales en comparación con arquitecturas clásicas como resnet18 o efficientnet.
+
+Prompt de Contexto para TFG - Vision Transformers en Detección de Anomalías Industriales
+Proyecto
+TFG sobre detección de anomalías en componentes industriales usando Vision Transformers (ViT) con DINOv3. El objetivo es aplicar transfer learning con DINOv3 para superar las limitaciones de arquitecturas CNN tradicionales en defectos pequeños.
+
+El proyecto actualmente se encunetra en una fase avanzada donde ya se han realizado varias iteraciones de entrenamiento con las arquitecturas tradicionales de resnet18, efficientnet y con deimv2 junto con dinov3 muchas pruebas.
+
+Los siguientes pasos a seguir en el desarrollo sería:
+Resumen de implementación con DEIMv2 + extensión multimodal
+
+1) Entrenamiento inicial (visión pura)
+Se utiliza DEIMv2 como detector base, empleando DINOv3 como backbone preentrenado y entrenable.
+El modelo se entrena con el dataset etiquetado con bounding boxes para todas las clases de defectos.
+Se aplican augmentations multiescala y se ajusta la red para mejorar el rendimiento en defectos pequeños.
+Este entrenamiento produce un detector inicial sólido y sirve como baseline.
+
+Esta fase ha sido completada con exito, indicándose en el documento deimv2_arquitetcura_implementacion.md toda la fase de experimentacion hecha aportando resultados de las metricas en la evaluacion de los distintos experimentos.
+
+2) Construcción de la capa multimodal
+Para cada clase del dataset (perforaciones, rayones, rotura, etc.) se redactan descripciones cortas en lenguaje natural (“Grieta fina y alargada”, “Perforación circular en la superficie”, etc.).
+Se extraen embeddings de texto utilizando un encoder textual de la familia DINOv3/CLIP/SigLIP.
+El backbone visual de DEIMv2 genera embeddings visuales para cada región propuesta en la imagen (ROI).
+
+3) Fusión visión–lenguaje
+Se implementa un módulo de similitud (por ejemplo, proyección lineal + normalización) que compara embeddings visuales y embeddings textuales para refinar la clasificación del detector.
+El modelo aprende a alinear regiones visuales con las descripciones semánticas, permitiendo una clasificación más robusta de defectos difíciles o visualmente similares.
+
+4) Entrenamiento conjunto (fine-tuning multimodal)
+Se reentrena la cabeza de clasificación del detector utilizando una pérdida combinada que incluye similitud visión-texto y la pérdida de detección tradicional.
+Esto mejora especialmente las clases con alta variabilidad visual o patrones muy sutiles.
+
+5) Resultado final
+El modelo mantiene las capacidades de detección de DEIMv2, pero incorpora un componente semántico que ayuda a distinguir defectos de forma más precisa.
+Se obtienen mejoras en recall, precisión y robustez, especialmente en defectos pequeños o mal diferenciados visualmente.
+
+El punto actualizado en el que me he encuentro ahora mismo es haber poddido completar con mucho éxito la fase 1.
+Para que contextualices muy bien, dentro mi proyecto en el documento demo-Multimodal/FASE2_Estrategias_Implementacion.md se especifica un poco más en detalle cuáles eran los pasos a seguir para esta fase 2.
+Para poder continuar con todo esto, quiero que contextualices muy bien todo lo que te he ido compartiendo como los proyectos o repositorios en github (mi proyecto llamado https://github.com/CarlosAtalaya/ViT-Industrial-Defects como el proyecto de deimv2 https://github.com/Intellindust-AI-Lab/DEIMv2).
+La fase 2 la he podido implementar pero con algunas deficiencias.He intentado poner en marcha la opcion 1 pero ha sido bastante complicado hacer esa iteración rápida debido a la rigidez del código base de DEIMV2.
+Por lo que ahora querría comenzar con la opción 3, y toda la estrategia de implementación está muy bien detallado en los siguientes documentos:
+demo-Multimodal/fase2_progressive_p2/estrategia-implementacion-opcion3.txt
+demo-Multimodal/fase2_progressive_p2/option3-implementation-guide.txt
+
+Además para poder realizar esta nueva opcion, quiero que tengas muy en cuenta la carpeta scripts/deimv2_multimodal/ con todos sus módulos para que te fijes sobretodo en las funcionalidades de generar un log.txt para luego poder extraer metricas de entrenameinto y cómo se procede con la parte de evaluación del modelo. Es muy importante que para esta opcion 3, evluando los resultados del entrenamiento sobre el conjunto de test me pueda sacar un fichero como el que sacan los modulos de evaluacion tipo:
+test_evaluation_results_comparable.json:
+{
+"mAP": 0.7849257373114362,
+"iou_threshold": 0.5,
+"score_threshold": 0.15,
+"num_test_images": 205,
+"AP_per_class": {
+"NORMAL": 0.9801980198019802,
+"DEFORMACIONES": 0.7789424316456119,
+"ROTURA_FRACTURA": 0.5761631823558516,
+"RAYONES_ARANAZOS": 0.8055982791261583,
+"PERFORACIONES": 0.9236168185449428,
+"CONTAMINACION": 0.6450356923940728
+},
+"precision_per_class": {
+"NORMAL": 1.0,
+"DEFORMACIONES": 1.0,
+"ROTURA_FRACTURA": 1.0,
+"RAYONES_ARANAZOS": 1.0,
+"PERFORACIONES": 1.0,
+"CONTAMINACION": 1.0
+},
+"recall_per_class": {
+"NORMAL": 0.9833333333333333,
+"DEFORMACIONES": 0.8421052631578947,
+"ROTURA_FRACTURA": 0.725,
+"RAYONES_ARANAZOS": 0.8529411764705882,
+"PERFORACIONES": 0.95,
+"CONTAMINACION": 0.7878787878787878
+}
+}
+
+Te voya dejar compartidos los repositorios vale?
+
+Estructura del Código:
+demo-Multimodal/
+scripts/
+├── resnet18/          # Baseline ResNet-18 + Faster R-CNN
+├── efficientnet/      # Baseline EfficientNet-B0 + Faster R-CNN
+ |-----deimv2_multimodal/  # Baseline deimv2 with DINOV3
+├── dataset_*.py       # Loaders y análisis de dataset
+└── compare_*.py       # Comparación entre arquitecturas
+
+
+
+Directrices de Colaboración
+
+Respuestas concisas: Solo lo necesario para resolver la duda técnica planteada
+Sin sobre-recomendaciones: Limitar consejos adicionales no solicitados
+Enfoque pragmático: Código funcional > explicaciones extensas
+DINOv3 es la arquitectura objetivo: No cuestionar esta decisión, es la versión actual a usar.
+
+Para poder continuar 
+
+Hardware
+
+GPU: RTX 4070 (12GB VRAM)
+RAM: 12GB
+
+Documentación de Referencia
+
+* Documentos de referencia para proceder a la implementacion de esta fase 2 con la opcion 3: estrategia-implementacion-opcion3.txt option3-implementation-guide.txt
+
+* Documento tecnico en demo-Multimodal/FASE2_Estrategias_Implementacion.md:
+Este es el documento más importante donde se detalla un poco las siguientes fases a implementar con las opciones posiblkes paara continuar con la generacion de  un modelo multimodal para comparar metricas. En este documento se detallan las 3 pposibles opciones para continuar y se descarta casi por completo la opcion 2
+
+* Documento técnico de implementación de nueva fase de desarrollo con deimv2 + multimodal sobre DINOV3: scripts/deimv2_multimodal/deimv2_arquitetcura_implementacion.md.
+Este docuemnto está actualizado con este punto el que me encuentro, en el de haber completado la fase 1. Hay mucha literatura de mi estado actual con mucha informacion, por lo que ahora mismo es uno de los documentos de referencia de mi proyecto.
+
+*Nota : Este es un proyecto técnico avanzado. El usuario tiene experiencia en ML y busca asistencia específica, no tutoriales básicos. Responde de forma directa y eficiente.
