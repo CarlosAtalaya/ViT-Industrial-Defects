@@ -2,6 +2,10 @@
 
 # Script de ejemplo para ejecutar el pipeline completo de entrenamiento y evaluación
 # ResNet-18 + Faster R-CNN para detección de defectos industriales
+#
+# NOTA IMPORTANTE: Las imágenes se procesan a resolución fija de 1024x1024
+# para comparación justa con DEIMv2 (ViT). Esta configuración requiere más
+# memoria GPU, por lo que el batch size se ha ajustado.
 
 set -e  # Salir si hay algún error
 
@@ -9,13 +13,16 @@ echo "=========================================="
 echo "PIPELINE DE ENTRENAMIENTO Y EVALUACIÓN"
 echo "Detección de Defectos Industriales"
 echo "Arquitectura: ResNet-18 + Faster R-CNN"
+echo "Resolución: 1024x1024 (comparación con DEIMv2)"
 echo "=========================================="
 echo ""
 
 # Configuración
 DATASET_PATH="/home/carlos/Escritorio/Proyectos_Personales/TFG_25-26/TFG-ViT/ViT/ViT-Industrial-Defects/curated_dataset_splitted_20251101_provisional_1st_version"
 EPOCHS=50
-BATCH_SIZE=8
+# NOTA: Batch size reducido debido a mayor resolución (1024x1024)
+# Ajustar según la memoria GPU disponible
+BATCH_SIZE=4
 LR=0.005
 NUM_WORKERS=4
 

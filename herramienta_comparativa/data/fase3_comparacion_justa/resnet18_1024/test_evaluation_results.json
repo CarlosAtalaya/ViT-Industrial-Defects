@@ -1,0 +1,30 @@
+{
+  "mAP": 0.07981339208348193,
+  "iou_threshold": 0.5,
+  "score_threshold": 0.15,
+  "num_test_images": 205,
+  "AP_per_class": {
+    "DEFORMACIONES": 0.27167678463306644,
+    "ROTURA_FRACTURA": 0.0869642857142857,
+    "RAYONES_ARANAZOS": 0.12023928215353939,
+    "PERFORACIONES": 0.0,
+    "CONTAMINACION": 0.0,
+    "Class_6": 0.0
+  },
+  "precision_per_class": {
+    "DEFORMACIONES": 0.27710843373493976,
+    "ROTURA_FRACTURA": 0.3,
+    "RAYONES_ARANAZOS": 0.2459016393442623,
+    "PERFORACIONES": 0.0,
+    "CONTAMINACION": 0.0,
+    "Class_6": 0.0
+  },
+  "recall_per_class": {
+    "DEFORMACIONES": 0.6052631578947368,
+    "ROTURA_FRACTURA": 0.15,
+    "RAYONES_ARANAZOS": 0.4411764705882353,
+    "PERFORACIONES": 0.0,
+    "CONTAMINACION": 0.0,
+    "Class_6": 0.0
+  }
+}

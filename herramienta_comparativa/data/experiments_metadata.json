@@ -1,0 +1,197 @@
+{
+  "project_info": {
+    "title": "Detección de Defectos Industriales con Vision Transformers",
+    "author": "Carlos",
+    "period": "TFG 2025-26",
+    "dataset": "curated_dataset_splitted_20251101_provisional_1st_version",
+    "num_classes": 6,
+    "classes": ["NORMAL", "DEFORMACIONES", "ROTURA_FRACTURA", "RAYONES_ARANAZOS", "PERFORACIONES", "CONTAMINACION"]
+  },
+  
+  "phases": {
+    "fase1": {
+      "name": "Fase 1: Baseline CNN",
+      "description": "Establecer línea base con arquitecturas clásicas CNN (ResNet-18 y EfficientNet-B0) usando Faster R-CNN como detector. Las imágenes se procesan en su resolución nativa sin redimensionamiento.",
+      "date_range": "Octubre 2025",
+      "motivation": "Evaluar el rendimiento de arquitecturas CNN tradicionales en el problema de detección de defectos industriales para establecer un punto de comparación.",
+      "conclusion": "Rendimiento bajo (mAP ~0.08-0.16) debido a la alta variabilidad del dataset, cambios de iluminación y tipos de defectos diversos. Las CNNs no logran generalizar adecuadamente."
+    },
+    "fase2": {
+      "name": "Fase 2: Exploración Vision Transformers",
+      "description": "Experimentación con DEIMv2 (ViT + DEIM Decoder) sobre backbone DINOv3. Se exploran diferentes resoluciones (640→1024) y número de épocas (87→300) para encontrar la configuración óptima.",
+      "date_range": "Noviembre 2025",
+      "motivation": "Los ViTs han demostrado ser más robustos para tareas de visión complejas. La hipótesis es que pueden capturar mejor las relaciones espaciales y contextuales necesarias para detectar defectos industriales.",
+      "conclusion": "Mejora espectacular: mAP de 0.50 (640px) hasta 0.785 (1024px, 300ep). La resolución 1024x1024 y entrenamientos largos son críticos para la convergencia de ViTs."
+    },
+    "fase3": {
+      "name": "Fase 3: Validación Experimental",
+      "description": "Re-entrenamiento de ResNet-18 y EfficientNet con resolución 1024x1024 para validar si la mejora de DEIMv2 se debe a la arquitectura o a la resolución.",
+      "date_range": "Diciembre 2025",
+      "motivation": "Validar científicamente que la superioridad de los Vision Transformers no se debe únicamente a usar mayor resolución de entrada.",
+      "conclusion": "ResNet-18 mejora ligeramente con 1024px (+3.9%), pero EfficientNet empeora (-24.7%). Ambas siguen muy lejos del 0.785 de DEIMv2, confirmando la superioridad arquitectónica de los ViTs."
+    }
+  },
+  
+  "experiments": {
+    "fase1_baseline": {
+      "resnet18_nativa": {
+        "id": "resnet18_nativa",
+        "name": "ResNet-18 + Faster R-CNN",
+        "architecture": "ResNet-18",
+        "backbone": "ResNet-18 (ImageNet)",
+        "detector": "Faster R-CNN",
+        "resolution": "Nativa (~1650x1350)",
+        "epochs": 50,
+        "batch_size": 8,
+        "learning_rate": 0.005,
+        "optimizer": "SGD",
+        "lr_scheduler": "StepLR",
+        "best_checkpoint_criterion": "Menor val_loss",
+        "phase": "fase1",
+        "path": "fase1_baseline/resnet18_nativa"
+      },
+      "efficientnet_nativa": {
+        "id": "efficientnet_nativa",
+        "name": "EfficientNet-B0 + Faster R-CNN",
+        "architecture": "EfficientNet-B0",
+        "backbone": "EfficientNet-B0 (ImageNet)",
+        "detector": "Faster R-CNN",
+        "resolution": "Nativa (~1650x1350)",
+        "epochs": 50,
+        "batch_size": 2,
+        "learning_rate": 0.0005,
+        "optimizer": "AdamW",
+        "lr_scheduler": "CosineAnnealingLR",
+        "best_checkpoint_criterion": "Menor val_loss",
+        "phase": "fase1",
+        "path": "fase1_baseline/efficientnet_nativa",
+        "is_best_efficientnet": true
+      }
+    },
+    "fase2_vit": {
+      "deimv2_640_87ep": {
+        "id": "deimv2_640_87ep",
+        "name": "DEIMv2 @ 640px (87 epochs)",
+        "architecture": "DEIMv2",
+        "backbone": "DINOv3 (ViT)",
+        "detector": "DEIM Decoder",
+        "resolution": "640x640",
+        "epochs": 87,
+        "best_epoch": 86,
+        "batch_size": 4,
+        "learning_rate": 0.0004,
+        "lr_backbone": 0.00004,
+        "optimizer": "AdamW",
+        "best_checkpoint_criterion": "Mayor mAP@0.5 en validación",
+        "notes": "Config optimizada sin augmentations agresivas. Limitación: pierde 82% de información visual.",
+        "phase": "fase2",
+        "path": "fase2_vit/deimv2_640_87ep"
+      },
+      "deimv2_1024_80ep": {
+        "id": "deimv2_1024_80ep",
+        "name": "DEIMv2 @ 1024px (80 epochs)",
+        "architecture": "DEIMv2",
+        "backbone": "DINOv3 (ViT)",
+        "detector": "DEIM Decoder",
+        "resolution": "1024x1024",
+        "epochs": 80,
+        "best_epoch": 80,
+        "batch_size": 4,
+        "learning_rate": 0.0004,
+        "lr_backbone": 0.00004,
+        "optimizer": "AdamW",
+        "best_checkpoint_criterion": "Mayor mAP@0.5 en validación",
+        "notes": "Primera prueba con resolución aumentada. Mejora significativa vs 640px.",
+        "phase": "fase2",
+        "path": "fase2_vit/deimv2_1024_80ep"
+      },
+      "deimv2_1024_120ep": {
+        "id": "deimv2_1024_120ep",
+        "name": "DEIMv2 @ 1024px (120 epochs)",
+        "architecture": "DEIMv2",
+        "backbone": "DINOv3 (ViT)",
+        "detector": "DEIM Decoder",
+        "resolution": "1024x1024",
+        "epochs": 120,
+        "best_epoch": 119,
+        "batch_size": 4,
+        "learning_rate": 0.0004,
+        "lr_backbone": 0.00004,
+        "optimizer": "AdamW",
+        "best_checkpoint_criterion": "Mayor mAP@0.5 en validación (epoch 119)",
+        "notes": "Entrenamiento extendido. El mejor epoch fue el 119, indicando que aún no había convergido.",
+        "phase": "fase2",
+        "path": "fase2_vit/deimv2_1024_120ep"
+      },
+      "deimv2_1024_300ep": {
+        "id": "deimv2_1024_300ep",
+        "name": "DEIMv2 @ 1024px (300 epochs)",
+        "architecture": "DEIMv2",
+        "backbone": "DINOv3 (ViT)",
+        "detector": "DEIM Decoder",
+        "resolution": "1024x1024",
+        "epochs": 300,
+        "best_epoch": 187,
+        "batch_size": 4,
+        "learning_rate": 0.0004,
+        "lr_backbone": 0.00004,
+        "optimizer": "AdamW",
+        "best_checkpoint_criterion": "Mayor mAP@0.5 en validación (epoch 187)",
+        "notes": "Entrenamiento largo que identificó convergencia clara en epoch 187. Precision perfecta (1.0) en todas las clases.",
+        "phase": "fase2",
+        "path": "fase2_vit/deimv2_1024_300ep",
+        "is_best": true,
+        "is_best_deimv2": true
+      }
+    },
+    "fase3_comparacion_justa": {
+      "resnet18_1024": {
+        "id": "resnet18_1024",
+        "name": "ResNet-18 @ 1024px",
+        "architecture": "ResNet-18",
+        "backbone": "ResNet-18 (ImageNet)",
+        "detector": "Faster R-CNN",
+        "resolution": "1024x1024",
+        "epochs": 50,
+        "batch_size": 4,
+        "learning_rate": 0.005,
+        "optimizer": "SGD",
+        "lr_scheduler": "StepLR",
+        "best_checkpoint_criterion": "Menor val_loss",
+        "notes": "Mismo resize que DEIMv2. Ligera mejora vs nativa (+3.9%).",
+        "phase": "fase3",
+        "path": "fase3_comparacion_justa/resnet18_1024",
+        "is_best_resnet": true
+      },
+      "efficientnet_1024": {
+        "id": "efficientnet_1024",
+        "name": "EfficientNet-B0 @ 1024px",
+        "architecture": "EfficientNet-B0",
+        "backbone": "EfficientNet-B0 (ImageNet)",
+        "detector": "Faster R-CNN",
+        "resolution": "1024x1024",
+        "epochs": 50,
+        "batch_size": 2,
+        "learning_rate": 0.0005,
+        "optimizer": "AdamW",
+        "lr_scheduler": "CosineAnnealingLR",
+        "best_checkpoint_criterion": "Menor val_loss",
+        "notes": "Mismo resize que DEIMv2. Empeora vs nativa (-24.7%), probablemente porque EfficientNet está optimizada para resoluciones menores.",
+        "phase": "fase3",
+        "path": "fase3_comparacion_justa/efficientnet_1024"
+      }
+    }
+  },
+  
+  "best_models_per_architecture": {
+    "ResNet-18": "resnet18_1024",
+    "EfficientNet-B0": "efficientnet_nativa",
+    "DEIMv2": "deimv2_1024_300ep"
+  },
+  
+  "final_comparison": {
+    "description": "Comparación de los mejores modelos de cada arquitectura",
+    "models": ["resnet18_1024", "efficientnet_nativa", "deimv2_1024_300ep"],
+    "conclusion": "DEIMv2 (ViT) supera significativamente a las CNNs. La arquitectura Vision Transformer es fundamentalmente superior para este problema de detección de defectos industriales."
+  }
+}

@@ -1,20 +1,27 @@
 #!/bin/bash
 
 # Script de ejemplo para ejecutar el pipeline completo de entrenamiento y evaluación
-# Efficient + Faster R-CNN para detección de defectos industriales
+# EfficientNet-B0 + Faster R-CNN para detección de defectos industriales
+#
+# NOTA IMPORTANTE: Las imágenes se procesan a resolución fija de 1024x1024
+# para comparación justa con DEIMv2 (ViT). Esta configuración requiere más
+# memoria GPU, por lo que el batch size se ha ajustado.
 
 set -e  # Salir si hay algún error
 
 echo "=========================================="
 echo "PIPELINE DE ENTRENAMIENTO Y EVALUACIÓN"
 echo "Detección de Defectos Industriales"
-echo "Arquitectura: Efficient + Faster R-CNN"
+echo "Arquitectura: EfficientNet-B0 + Faster R-CNN"
+echo "Resolución: 1024x1024 (comparación con DEIMv2)"
 echo "=========================================="
 echo ""
 
 # Configuración
 DATASET_PATH="/home/carlos/Escritorio/Proyectos_Personales/TFG_25-26/TFG-ViT/ViT/ViT-Industrial-Defects/curated_dataset_splitted_20251101_provisional_1st_version"
 EPOCHS=50
+# NOTA: Batch size reducido debido a mayor resolución (1024x1024)
+# EfficientNet requiere más memoria que ResNet, ajustar según GPU disponible
 BATCH_SIZE=2
 LR=0.0005
 NUM_WORKERS=4

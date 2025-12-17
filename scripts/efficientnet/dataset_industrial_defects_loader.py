@@ -1,6 +1,10 @@
 """
 Dataset loader para detección de defectos industriales en formato COCO.
 Soporta 6 categorías de defectos + NORMAL.
+
+NOTA: Todas las imágenes se redimensionan a IMAGE_SIZE x IMAGE_SIZE para 
+comparación justa con DEIMv2 (ViT). Los bounding boxes se escalan 
+proporcionalmente.
 """
 
 import os
@@ -11,6 +15,10 @@ from PIL import Image
 import torchvision.transforms as T
 from typing import Dict, List, Tuple, Optional
 import numpy as np
+
+# Tamaño de imagen fijo para comparación justa con DEIMv2 (ViT)
+# Este tamaño mejoró significativamente el rendimiento del modelo ViT
+IMAGE_SIZE = 1024
 
 
 class IndustrialDefectsDataset(Dataset):
@@ -79,8 +87,11 @@ class IndustrialDefectsDataset(Dataset):
         """
         Retorna imagen y target en formato esperado por Faster R-CNN.
         
+        NOTA: Las imágenes se redimensionan a IMAGE_SIZE x IMAGE_SIZE y los
+        bounding boxes se escalan proporcionalmente para mantener consistencia.
+        
         Returns:
-            image: tensor [C, H, W] normalizado
+            image: tensor [C, H, W] normalizado (tamaño IMAGE_SIZE x IMAGE_SIZE)
             target: dict con 'boxes', 'labels', 'image_id', 'area', 'iscrowd'
         """
         # Obtener información de la imagen
@@ -91,6 +102,13 @@ class IndustrialDefectsDataset(Dataset):
         
         # Cargar imagen
         image = Image.open(img_path).convert('RGB')
+        
+        # Obtener dimensiones originales para escalar bounding boxes
+        orig_width, orig_height = image.size
+        
+        # Calcular factores de escala para los bounding boxes
+        scale_x = IMAGE_SIZE / orig_width
+        scale_y = IMAGE_SIZE / orig_height
         
         # Obtener anotaciones para esta imagen
         annotations = self.image_id_to_annotations.get(img_id, [])
@@ -114,9 +132,17 @@ class IndustrialDefectsDataset(Dataset):
             
             # Validar que el bbox sea válido
             if w > 0 and h > 0:
-                boxes.append([x_min, y_min, x_max, y_max])
+                # Escalar bounding boxes al nuevo tamaño de imagen
+                x_min_scaled = x_min * scale_x
+                y_min_scaled = y_min * scale_y
+                x_max_scaled = x_max * scale_x
+                y_max_scaled = y_max * scale_y
+                
+                boxes.append([x_min_scaled, y_min_scaled, x_max_scaled, y_max_scaled])
                 labels.append(ann['category_id'])
-                areas.append(ann.get('area', w * h))
+                # Escalar área proporcionalmente (factor = scale_x * scale_y)
+                scaled_area = ann.get('area', w * h) * scale_x * scale_y
+                areas.append(scaled_area)
                 iscrowd.append(ann.get('iscrowd', 0))
         
         # Convertir a tensors
@@ -145,8 +171,11 @@ class IndustrialDefectsDataset(Dataset):
         if self.transforms is not None:
             image = self.transforms(image)
         else:
-            # Transformación por defecto: convertir a tensor
-            image = T.ToTensor()(image)
+            # Transformación por defecto: redimensionar y convertir a tensor
+            image = T.Compose([
+                T.Resize([IMAGE_SIZE, IMAGE_SIZE]),
+                T.ToTensor()
+            ])(image)
         
         return image, target
     
@@ -171,13 +200,26 @@ def get_transform(train: bool = True):
     """
     Retorna transformaciones para imágenes.
     
+    NOTA: Todas las imágenes se redimensionan a IMAGE_SIZE x IMAGE_SIZE (1024x1024)
+    para comparación justa con DEIMv2 (ViT).
+    
     Args:
         train: Si True, incluye data augmentation
+    
+    Returns:
+        T.Compose con las transformaciones aplicadas en orden:
+        1. Resize a IMAGE_SIZE x IMAGE_SIZE
+        2. ToTensor
+        3. Normalize (estadísticas ImageNet)
     """
     transforms = []
+    
+    # CRÍTICO: Redimensionar a tamaño fijo para comparación justa con DEIMv2
+    transforms.append(T.Resize([IMAGE_SIZE, IMAGE_SIZE]))
+    
     transforms.append(T.ToTensor())
     
-    # Normalización estándar de ImageNet (ResNet preentrenado en ImageNet)
+    # Normalización estándar de ImageNet (EfficientNet preentrenado en ImageNet)
     transforms.append(T.Normalize(
         mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225]
@@ -185,6 +227,7 @@ def get_transform(train: bool = True):
     
     # TODO: Agregar data augmentation si train=True
     # Se puede usar albumentations para augmentations más avanzadas
+    # NOTA: Si se usa albumentations, asegurarse de que también escale los bboxes
     
     return T.Compose(transforms)
 
