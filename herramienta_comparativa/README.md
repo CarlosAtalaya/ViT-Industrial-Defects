@@ -71,6 +71,21 @@ data/
 
 **Conclusión:** La arquitectura Vision Transformer (DEIMv2) supera significativamente a las CNNs tradicionales para la detección de defectos industriales.
 
+## 📦 Exportar Datos para Herramienta Independiente
+
+Para hacer la herramienta completamente independiente del repositorio, exporta todos los datos necesarios:
+
+```bash
+python3 export_data.py
+```
+
+Este script exporta:
+- **Imágenes seleccionadas** → `data/images_selected/`
+- **Predicciones JSON** → `data/predictions/` (resnet18_predictions.json, efficientnet_predictions.json, deimv2_predictions.json)
+- **Ground Truth** → `data/ground_truth.json` (solo anotaciones de imágenes seleccionadas)
+
+Una vez exportados los datos, el dashboard funcionará de forma independiente usando los datos en `data/` en lugar de buscar en el repositorio completo.
+
 ## 🛠️ Requisitos
 
 - Python 3.8+
@@ -78,6 +93,7 @@ data/
 - Pandas >= 2.0.0
 - Plotly >= 5.18.0
 - Pillow >= 10.0.0
+- Matplotlib >= 3.7.0
 
 ---
 *TFG 2025-26 - Detección de Defectos Industriales con Vision Transformers*

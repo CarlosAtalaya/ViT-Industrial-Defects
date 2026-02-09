@@ -6,6 +6,8 @@ Genera imágenes con bounding boxes de predicciones y ground truth.
 import os
 import argparse
 import random
+import json
+from pathlib import Path
 
 import torch
 from torch.utils.data import DataLoader
@@ -13,6 +15,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
 from PIL import Image
+import torchvision.transforms as T
 
 from dataset_industrial_defects_loader import (
     IndustrialDefectsDataset,
@@ -168,17 +171,152 @@ def visualize_predictions(
 
 
 @torch.no_grad()
+def get_predictions_for_image_efficientnet(
+    model,
+    image_path,
+    device,
+    min_score_threshold=0.0
+):
+    """
+    Obtiene todas las predicciones para una imagen (sin filtrar por threshold alto).
+    Retorna predicciones en formato COCO con todos los scores.
+    """
+    # Cargar y preprocesar imagen
+    img = Image.open(image_path).convert('RGB')
+    
+    # Transformaciones (igual que en el dataset)
+    transform = T.Compose([
+        T.ToTensor(),
+        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+    
+    img_tensor = transform(img).unsqueeze(0).to(device)
+    
+    # Predicción
+    outputs = model(img_tensor)[0]
+    
+    # Extraer predicciones
+    boxes = outputs['boxes'].cpu()
+    labels = outputs['labels'].cpu()
+    scores = outputs['scores'].cpu()
+    
+    # Filtrar solo por score mínimo (no por threshold alto)
+    keep = scores >= min_score_threshold
+    boxes = boxes[keep]
+    labels = labels[keep]
+    scores = scores[keep]
+    
+    # Convertir boxes de [x1, y1, x2, y2] a COCO format [x, y, w, h]
+    predictions = []
+    for box, label, score in zip(boxes, labels, scores):
+        x1, y1, x2, y2 = box.tolist()
+        w = x2 - x1
+        h = y2 - y1
+        
+        predictions.append({
+            'category_id': int(label.item()),
+            'bbox': [float(x1), float(y1), float(w), float(h)],  # [x, y, w, h]
+            'score': float(score.item())
+        })
+    
+    return predictions, img
+
+
+@torch.no_grad()
 def main(args):
     """Función principal de visualización."""
     
     print("=" * 80)
-    print("VISUALIZACIÓN DE PREDICCIONES")
+    print("VISUALIZACIÓN DE PREDICCIONES - EfficientNet")
     print("=" * 80)
     
     # Device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"\nDevice: {device}")
     
+    # Modo: imágenes seleccionadas
+    if args.selected_images_mode:
+        print("\n" + "="*80)
+        print("MODO: Imágenes Seleccionadas")
+        print("="*80)
+        
+        selected_images_dir = Path(args.selected_images_dir)
+        raw_images_dir = selected_images_dir / "raw"
+        predictions_dir = selected_images_dir / "predictions" / "efficientnet"
+        
+        if not raw_images_dir.exists():
+            print(f"❌ ERROR: No se encontró la carpeta: {raw_images_dir}")
+            return
+        
+        predictions_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Obtener todas las imágenes en raw/
+        image_files = sorted(list(raw_images_dir.glob("*.jpg")) + list(raw_images_dir.glob("*.png")))
+        
+        if not image_files:
+            print(f"❌ ERROR: No se encontraron imágenes en: {raw_images_dir}")
+            return
+        
+        print(f"\n📂 Encontradas {len(image_files)} imágenes en {raw_images_dir}")
+        print(f"📂 Guardando predicciones en: {predictions_dir}")
+        
+        # Cargar modelo (necesitamos num_classes, usar dataset para obtenerlo)
+        temp_dataset = IndustrialDefectsDataset(
+            root_dir=args.dataset_path,
+            split='test',
+            transforms=get_transform(train=False)
+        )
+        num_classes = len(temp_dataset.categories) + 1
+        
+        model = get_model_efficientnet_fasterrcnn(
+            num_classes=num_classes,
+            pretrained_backbone=False
+        )
+        
+        checkpoint = torch.load(args.checkpoint, map_location=device)
+        if 'model_state_dict' in checkpoint:
+            model.load_state_dict(checkpoint['model_state_dict'])
+        else:
+            model.load_state_dict(checkpoint)
+        model.to(device)
+        model.eval()
+        
+        print(f"✅ Modelo cargado")
+        
+        # Generar predicciones para cada imagen
+        all_predictions = {}
+        
+        for i, img_path in enumerate(image_files):
+            print(f"  Procesando {i+1}/{len(image_files)}: {img_path.name}")
+            
+            # Obtener predicciones (sin filtrar por threshold alto)
+            predictions, _ = get_predictions_for_image_efficientnet(
+                model=model,
+                image_path=str(img_path),
+                device=device,
+                min_score_threshold=0.0  # Guardar todas las predicciones
+            )
+            
+            # Guardar predicciones con nombre de imagen como clave
+            img_name = img_path.stem
+            all_predictions[img_name] = {
+                'image_name': img_path.name,
+                'image_path': str(img_path),
+                'predictions': predictions
+            }
+        
+        # Guardar JSON con todas las predicciones
+        json_path = predictions_dir / "predictions_all.json"
+        with open(json_path, 'w') as f:
+            json.dump(all_predictions, f, indent=2)
+        
+        print(f"\n✅ Predicciones guardadas en: {json_path}")
+        print(f"   Total de imágenes procesadas: {len(all_predictions)}")
+        print(f"   Total de detecciones: {sum(len(p['predictions']) for p in all_predictions.values())}")
+        
+        return
+    
+    # Modo normal: usar dataset completo
     # Cargar dataset
     print(f"\nCargando dataset de {args.split}...")
     dataset = IndustrialDefectsDataset(
@@ -205,10 +343,10 @@ def main(args):
     
     print(f"Modelo cargado (época {checkpoint['epoch']})")
     
-    # Crear directorio de salida
+    # Crear directorio de salida (estandarizado: visualizations_test)
     output_dir = os.path.join(
         os.path.dirname(args.checkpoint),
-        f'visualizations_{args.split}'
+        'visualizations_test'
     )
     os.makedirs(output_dir, exist_ok=True)
     print(f"\nGuardando visualizaciones en: {output_dir}")
@@ -303,5 +441,23 @@ if __name__ == "__main__":
         help='Mostrar imágenes con plt.show()'
     )
     
+    # Modo imágenes seleccionadas
+    parser.add_argument('--selected-images-mode', action='store_true',
+                       help='Modo para procesar solo imágenes seleccionadas en images_selected_for_visualize/raw/')
+    parser.add_argument('--selected-images-dir', type=str,
+                       default='curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize',
+                       help='Directorio base con raw/ y predictions/')
+    
     args = parser.parse_args()
+    
+    # Validar argumentos según modo
+    if args.selected_images_mode:
+        if not args.selected_images_dir:
+            parser.error("--selected-images-dir es requerido en modo selected-images-mode")
+        if not args.dataset_path:
+            parser.error("--dataset-path es requerido para cargar el modelo en modo selected-images-mode")
+    else:
+        if not args.dataset_path:
+            parser.error("--dataset-path es requerido en modo normal")
+    
     main(args)

@@ -85,7 +85,7 @@ def parse_training_log(log_file):
 
 
 def plot_single_metric(epochs, data, ylabel, title, output_path, 
-                       color='blue', use_log_scale=False, mark_best=True):
+                       color='blue', use_log_scale=False, mark_best=True, file_format='pdf'):
     """
     Genera una gráfica individual para una métrica.
     
@@ -130,13 +130,16 @@ def plot_single_metric(epochs, data, ylabel, title, output_path,
         ax.legend(fontsize=10, loc='best')
     
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    # Asegurar que la extensión del archivo coincida con el formato
+    if not output_path.endswith(f'.{file_format}'):
+        output_path = output_path.rsplit('.', 1)[0] + f'.{file_format}'
+    plt.savefig(output_path, dpi=150, bbox_inches='tight', format=file_format)
     plt.close()
     
     print(f"  ✓ Guardado: {os.path.basename(output_path)}")
 
 
-def plot_multiple_metrics(epochs, metrics_dict, ylabel, title, output_path):
+def plot_multiple_metrics(epochs, metrics_dict, ylabel, title, output_path, file_format='pdf'):
     """Genera gráfica comparativa de múltiples métricas."""
     fig, ax = plt.subplots(figsize=(12, 6))
     
@@ -162,7 +165,7 @@ def plot_multiple_metrics(epochs, metrics_dict, ylabel, title, output_path):
     print(f"  ✓ Guardado: {os.path.basename(output_path)}")
 
 
-def plot_training_metrics(log_path, base_output_dir):
+def plot_training_metrics(log_path, base_output_dir, file_format='pdf'):
     """
     Genera todas las gráficas de métricas.
     
@@ -185,48 +188,48 @@ def plot_training_metrics(log_path, base_output_dir):
     plot_single_metric(
         epochs, metrics['train_lr'],
         'Learning Rate', 'Learning Rate Schedule',
-        os.path.join(output_dir, '1_learning_rate.png'),
-        color='green', use_log_scale=True, mark_best=False
+        os.path.join(output_dir, f'1_learning_rate.{file_format}'),
+        color='green', use_log_scale=True, mark_best=False, file_format=file_format
     )
     
     # 2. Loss Total
     plot_single_metric(
         epochs, metrics['train_loss'],
         'Loss', 'Pérdida Total de Entrenamiento',
-        os.path.join(output_dir, '2_total_loss.png'),
-        color='red', mark_best=True
+        os.path.join(output_dir, f'2_total_loss.{file_format}'),
+        color='red', mark_best=True, file_format=file_format
     )
     
     # 3. Loss MAL (Classification)
     plot_single_metric(
         epochs, metrics['train_loss_mal'],
         'Loss', 'Pérdida de Clasificación (MAL)',
-        os.path.join(output_dir, '3_classification_loss.png'),
-        color='blue', mark_best=True
+        os.path.join(output_dir, f'3_classification_loss.{file_format}'),
+        color='blue', mark_best=True, file_format=file_format
     )
     
     # 4. Loss BBox (Regression)
     plot_single_metric(
         epochs, metrics['train_loss_bbox'],
         'Loss', 'Pérdida de Regresión BBox',
-        os.path.join(output_dir, '4_bbox_regression_loss.png'),
-        color='orange', mark_best=True
+        os.path.join(output_dir, f'4_bbox_regression_loss.{file_format}'),
+        color='orange', mark_best=True, file_format=file_format
     )
     
     # 5. Loss GIoU
     plot_single_metric(
         epochs, metrics['train_loss_giou'],
         'Loss', 'Pérdida GIoU',
-        os.path.join(output_dir, '5_giou_loss.png'),
-        color='purple', mark_best=True
+        os.path.join(output_dir, f'5_giou_loss.{file_format}'),
+        color='purple', mark_best=True, file_format=file_format
     )
     
     # 6. Loss Focal (FGL)
     plot_single_metric(
         epochs, metrics['train_loss_fgl'],
         'Loss', 'Pérdida Focal Loss',
-        os.path.join(output_dir, '6_focal_loss.png'),
-        color='brown', mark_best=True
+        os.path.join(output_dir, f'6_focal_loss.{file_format}'),
+        color='brown', mark_best=True, file_format=file_format
     )
     
     # 7. Validation mAP
@@ -234,8 +237,8 @@ def plot_training_metrics(log_path, base_output_dir):
         plot_single_metric(
             epochs, metrics['val_map'],
             'mAP', 'Validation mAP @0.5:0.95',
-            os.path.join(output_dir, '7_validation_map.png'),
-            color='green', mark_best=True
+            os.path.join(output_dir, f'7_validation_map.{file_format}'),
+            color='green', mark_best=True, file_format=file_format
         )
     
     # 8. Validation AP50
@@ -243,8 +246,8 @@ def plot_training_metrics(log_path, base_output_dir):
         plot_single_metric(
             epochs, metrics['val_ap50'],
             'AP@0.5', 'Validation AP @0.5',
-            os.path.join(output_dir, '8_validation_ap50.png'),
-            color='blue', mark_best=True
+            os.path.join(output_dir, f'8_validation_ap50.{file_format}'),
+            color='blue', mark_best=True, file_format=file_format
         )
     
     # 9. Validation AP75
@@ -252,8 +255,8 @@ def plot_training_metrics(log_path, base_output_dir):
         plot_single_metric(
             epochs, metrics['val_ap75'],
             'AP@0.75', 'Validation AP @0.75',
-            os.path.join(output_dir, '9_validation_ap75.png'),
-            color='red', mark_best=True
+            os.path.join(output_dir, f'9_validation_ap75.{file_format}'),
+            color='red', mark_best=True, file_format=file_format
         )
     
     # 10. Comparación de losses desglosadas
@@ -266,7 +269,8 @@ def plot_training_metrics(log_path, base_output_dir):
     plot_multiple_metrics(
         epochs, loss_components,
         'Loss', 'Comparación de Componentes de Pérdida',
-        os.path.join(output_dir, '10_loss_components_comparison.png')
+        os.path.join(output_dir, f'10_loss_components_comparison.{file_format}'),
+        file_format=file_format
     )
     
     # 11. Comparación de métricas de validación
@@ -279,7 +283,8 @@ def plot_training_metrics(log_path, base_output_dir):
         plot_multiple_metrics(
             epochs, val_metrics,
             'COCO mAP', 'Métricas de Validación',
-            os.path.join(output_dir, '11_validation_metrics_comparison.png')
+            os.path.join(output_dir, f'11_validation_metrics_comparison.{file_format}'),
+            file_format=file_format
         )
     
     # Imprimir resumen
@@ -318,7 +323,7 @@ def main(args):
     
     # Generar gráficas
     try:
-        plot_training_metrics(args.log_path, output_dir)
+        plot_training_metrics(args.log_path, output_dir, file_format=args.format)
         print(f"\n✅ Visualización completada")
         print(f"📁 Gráficas guardadas en: {os.path.join(output_dir, 'training_metrics/')}")
     except Exception as e:
@@ -334,6 +339,9 @@ if __name__ == "__main__":
                        help='Ruta al archivo log.txt')
     parser.add_argument('--output-dir', type=str, default=None,
                        help='Directorio de salida (default: mismo que log.txt)')
+    parser.add_argument('--format', type=str, default='pdf',
+                       choices=['pdf', 'png', 'svg'],
+                       help='Formato de salida para las gráficas (default: pdf)')
     
     args = parser.parse_args()
     main(args)

@@ -15,7 +15,7 @@ import numpy as np
 
 def plot_individual_metric(epochs, train_data, val_data, 
                           metric_name, ylabel, title, 
-                          output_path, use_log_scale=False):
+                          output_path, use_log_scale=False, file_format='pdf'):
     """
     Genera una gráfica individual para una métrica específica.
     
@@ -56,13 +56,16 @@ def plot_individual_metric(epochs, train_data, val_data,
     ax.legend(fontsize=10, loc='best')
     
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    # Asegurar que la extensión del archivo coincida con el formato
+    if not output_path.endswith(f'.{file_format}'):
+        output_path = output_path.rsplit('.', 1)[0] + f'.{file_format}'
+    plt.savefig(output_path, dpi=150, bbox_inches='tight', format=file_format)
     plt.close()
     
     print(f"  ✓ Guardado: {os.path.basename(output_path)}")
 
 
-def plot_learning_rate(epochs, lr_data, output_path):
+def plot_learning_rate(epochs, lr_data, output_path, file_format='pdf'):
     """Genera gráfica de learning rate."""
     fig, ax = plt.subplots(figsize=(10, 6))
     
@@ -76,13 +79,16 @@ def plot_learning_rate(epochs, lr_data, output_path):
     ax.set_yscale('log')
     
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    # Asegurar que la extensión del archivo coincida con el formato
+    if not output_path.endswith(f'.{file_format}'):
+        output_path = output_path.rsplit('.', 1)[0] + f'.{file_format}'
+    plt.savefig(output_path, dpi=150, bbox_inches='tight', format=file_format)
     plt.close()
     
     print(f"  ✓ Guardado: {os.path.basename(output_path)}")
 
 
-def plot_loss_components(epochs, components_dict, output_path):
+def plot_loss_components(epochs, components_dict, output_path, file_format='pdf'):
     """Genera gráfica comparativa de componentes de pérdida."""
     fig, ax = plt.subplots(figsize=(12, 6))
     
@@ -101,13 +107,16 @@ def plot_loss_components(epochs, components_dict, output_path):
     ax.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    # Asegurar que la extensión del archivo coincida con el formato
+    if not output_path.endswith(f'.{file_format}'):
+        output_path = output_path.rsplit('.', 1)[0] + f'.{file_format}'
+    plt.savefig(output_path, dpi=150, bbox_inches='tight', format=file_format)
     plt.close()
     
     print(f"  ✓ Guardado: {os.path.basename(output_path)}")
 
 
-def plot_training_metrics(history_path, base_output_dir):
+def plot_training_metrics(history_path, base_output_dir, file_format='pdf'):
     """
     Genera todas las gráficas de métricas de entrenamiento.
     
@@ -149,41 +158,47 @@ def plot_training_metrics(history_path, base_output_dir):
     plot_individual_metric(
         epochs, train_loss, val_loss,
         'total_loss', 'Loss', 'Pérdida Total',
-        os.path.join(output_dir, '1_total_loss.png')
+        os.path.join(output_dir, f'1_total_loss.{file_format}'),
+        file_format=file_format
     )
     
     # 2. Pérdida del clasificador
     plot_individual_metric(
         epochs, train_loss_classifier, val_loss_classifier,
         'classifier_loss', 'Loss', 'Pérdida del Clasificador',
-        os.path.join(output_dir, '2_classifier_loss.png')
+        os.path.join(output_dir, f'2_classifier_loss.{file_format}'),
+        file_format=file_format
     )
     
     # 3. Pérdida de regresión de bbox
     plot_individual_metric(
         epochs, train_loss_box_reg, val_loss_box_reg,
         'box_regression_loss', 'Loss', 'Pérdida de Regresión BBox',
-        os.path.join(output_dir, '3_box_regression_loss.png')
+        os.path.join(output_dir, f'3_box_regression_loss.{file_format}'),
+        file_format=file_format
     )
     
     # 4. Pérdida de objectness (RPN)
     plot_individual_metric(
         epochs, train_loss_objectness, val_loss_objectness,
         'objectness_loss', 'Loss', 'Pérdida de Objectness (RPN)',
-        os.path.join(output_dir, '4_objectness_loss.png')
+        os.path.join(output_dir, f'4_objectness_loss.{file_format}'),
+        file_format=file_format
     )
     
     # 5. Pérdida de RPN box regression
     plot_individual_metric(
         epochs, train_loss_rpn_box_reg, val_loss_rpn_box_reg,
         'rpn_box_reg_loss', 'Loss', 'Pérdida de RPN BBox Regression',
-        os.path.join(output_dir, '5_rpn_box_regression_loss.png')
+        os.path.join(output_dir, f'5_rpn_box_regression_loss.{file_format}'),
+        file_format=file_format
     )
     
     # 6. Learning rate
     plot_learning_rate(
         epochs, lr,
-        os.path.join(output_dir, '6_learning_rate.png')
+        os.path.join(output_dir, f'6_learning_rate.{file_format}'),
+        file_format=file_format
     )
     
     # 7. Componentes de pérdida (comparativa)
@@ -195,7 +210,8 @@ def plot_training_metrics(history_path, base_output_dir):
     }
     plot_loss_components(
         epochs, components,
-        os.path.join(output_dir, '7_loss_components_comparison.png')
+        os.path.join(output_dir, f'7_loss_components_comparison.{file_format}'),
+        file_format=file_format
     )
     
     # Imprimir resumen
@@ -234,7 +250,7 @@ def main(args):
         raise FileNotFoundError(f"No se encontró: {history_path}")
     
     # Generar gráficas
-    plot_training_metrics(history_path, output_dir)
+    plot_training_metrics(history_path, output_dir, file_format=args.format)
     
     print("\n✅ Visualización completada")
     print(f"📁 Gráficas guardadas en: {os.path.join(output_dir, 'training_metrics/')}")
@@ -251,6 +267,9 @@ if __name__ == "__main__":
         required=True,
         help='Ruta al archivo training_history.json o directorio que lo contiene'
     )
+    parser.add_argument('--format', type=str, default='pdf',
+                       choices=['pdf', 'png', 'svg'],
+                       help='Formato de salida para las gráficas (default: pdf)')
     
     args = parser.parse_args()
     main(args)

@@ -29,6 +29,13 @@
       "date_range": "Diciembre 2025",
       "motivation": "Validar científicamente que la superioridad de los Vision Transformers no se debe únicamente a usar mayor resolución de entrada.",
       "conclusion": "ResNet-18 mejora ligeramente con 1024px (+3.9%), pero EfficientNet empeora (-24.7%). Ambas siguen muy lejos del 0.785 de DEIMv2, confirmando la superioridad arquitectónica de los ViTs."
+    },
+    "fase4": {
+      "name": "Fase 4: Validación de Robustez con Score Thresholds Altos",
+      "description": "Evaluación del mejor modelo DEIMv2 con score thresholds progresivamente más estrictos (0.75 y 0.90) para validar que la precision perfecta observada no es un artefacto del threshold bajo.",
+      "date_range": "Diciembre 2025",
+      "motivation": "Verificar científicamente si la precision perfecta (1.0) observada con threshold 0.15 es un indicador de un modelo bien entrenado o podría ser síntoma de overfitting.",
+      "conclusion": "Validación exitosa: el modelo mantiene precision perfecta (1.0) incluso con thresholds muy estrictos (0.90) y mAP > 0.70, confirmando robustez y ausencia de overfitting."
     }
   },
   
@@ -137,11 +144,16 @@
         "lr_backbone": 0.00004,
         "optimizer": "AdamW",
         "best_checkpoint_criterion": "Mayor mAP@0.5 en validación (epoch 187)",
-        "notes": "Entrenamiento largo que identificó convergencia clara en epoch 187. Precision perfecta (1.0) en todas las clases.",
+        "notes": "Entrenamiento largo que identificó convergencia clara en epoch 187. Precision perfecta (1.0) en todas las clases. Validado con thresholds altos en Fase 4.",
         "phase": "fase2",
         "path": "fase2_vit/deimv2_1024_300ep",
         "is_best": true,
-        "is_best_deimv2": true
+        "is_best_deimv2": true,
+        "threshold_analysis": {
+          "available": true,
+          "thresholds": [0.15, 0.75, 0.90],
+          "path": "fase2_vit/deimv2_1024_300ep/threshold_analysis"
+        }
       }
     },
     "fase3_comparacion_justa": {

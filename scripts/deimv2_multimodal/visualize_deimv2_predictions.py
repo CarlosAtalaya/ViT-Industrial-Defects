@@ -8,6 +8,7 @@ import os
 import sys
 import argparse
 import random
+import json
 from pathlib import Path
 
 import torch
@@ -53,6 +54,75 @@ def denormalize_image(image_tensor):
     image = np.clip(image, 0, 1)
     
     return image
+
+
+@torch.no_grad()
+def get_predictions_for_image(
+    model,
+    image_path,
+    device,
+    cfg,
+    min_score_threshold=0.0
+):
+    """
+    Obtiene todas las predicciones para una imagen (sin filtrar por threshold alto).
+    Retorna predicciones en formato COCO con todos los scores.
+    """
+    import torchvision.transforms as T
+    
+    img = Image.open(image_path).convert('RGB')
+    orig_size = img.size  # (width, height)
+    orig_h, orig_w = orig_size[1], orig_size[0]
+    
+    # Aplicar transformaciones
+    transform = T.Compose([
+        T.Resize([1024, 1024]),
+        T.ToTensor(),
+        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+    
+    img_tensor = transform(img).unsqueeze(0).to(device)
+
+    # Predicción
+    outputs = model(img_tensor)
+
+    # Extraer del formato DEIMv2
+    pred_logits = outputs['pred_logits'][0]
+    pred_boxes_norm = outputs['pred_boxes'][0]
+
+    # Scores y labels
+    scores = pred_logits.softmax(-1).max(-1)[0].cpu()
+    labels = pred_logits.softmax(-1).argmax(-1).cpu()
+
+    # Filtrar solo por clase válida (no por score, para guardar todas)
+    keep = (labels < 6) & (scores >= min_score_threshold)
+    scores = scores[keep]
+    labels = labels[keep]
+    pred_boxes_norm = pred_boxes_norm[keep]
+
+    # Desnormalizar boxes [cx, cy, w, h] -> COCO format [x, y, w, h]
+    pred_boxes = pred_boxes_norm.cpu().clone()
+    pred_boxes[:, 0] *= orig_w  # cx
+    pred_boxes[:, 1] *= orig_h  # cy
+    pred_boxes[:, 2] *= orig_w  # w
+    pred_boxes[:, 3] *= orig_h  # h
+
+    # Convertir de [cx, cy, w, h] a COCO format [x, y, w, h]
+    boxes_coco = pred_boxes.clone()
+    boxes_coco[:, 0] -= boxes_coco[:, 2] / 2  # x
+    boxes_coco[:, 1] -= boxes_coco[:, 3] / 2  # y
+
+    # Crear lista de predicciones en formato COCO
+    predictions = []
+    for box, label, score in zip(boxes_coco, labels, scores):
+        predictions.append({
+            'category_id': int(label.item()),
+            'bbox': [float(box[0].item()), float(box[1].item()), 
+                     float(box[2].item()), float(box[3].item())],  # [x, y, w, h]
+            'score': float(score.item())
+        })
+    
+    return predictions, img
 
 
 @torch.no_grad()
@@ -206,6 +276,75 @@ def main(args):
     model, cfg = load_model_and_config(args.checkpoint, args.config, device)
     print("✅ Modelo cargado")
     
+    # Modo: imágenes seleccionadas
+    if args.selected_images_mode:
+        print("\n" + "="*80)
+        print("MODO: Imágenes Seleccionadas")
+        print("="*80)
+        
+        selected_images_dir = Path(args.selected_images_dir)
+        raw_images_dir = selected_images_dir / "raw"
+        predictions_dir = selected_images_dir / "predictions" / "deimv2"
+        
+        if not raw_images_dir.exists():
+            print(f"❌ ERROR: No se encontró la carpeta: {raw_images_dir}")
+            return
+        
+        predictions_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Obtener todas las imágenes en raw/
+        image_files = sorted(list(raw_images_dir.glob("*.jpg")) + list(raw_images_dir.glob("*.png")))
+        
+        if not image_files:
+            print(f"❌ ERROR: No se encontraron imágenes en: {raw_images_dir}")
+            return
+        
+        print(f"\n📂 Encontradas {len(image_files)} imágenes en {raw_images_dir}")
+        print(f"📂 Guardando predicciones en: {predictions_dir}")
+        
+        # Cargar anotaciones COCO para obtener category_names
+        if args.ann_file and os.path.exists(args.ann_file):
+            coco = COCO(args.ann_file)
+            category_names = {cat['id']: cat['name'] for cat in coco.dataset['categories']}
+        else:
+            # Fallback: nombres por defecto
+            category_names = {i: f"Class_{i}" for i in range(6)}
+        
+        # Generar predicciones para cada imagen
+        all_predictions = {}
+        
+        for i, img_path in enumerate(image_files):
+            print(f"  Procesando {i+1}/{len(image_files)}: {img_path.name}")
+            
+            # Obtener predicciones (sin filtrar por threshold alto)
+            predictions, img = get_predictions_for_image(
+                model=model,
+                image_path=str(img_path),
+                device=device,
+                cfg=cfg,
+                min_score_threshold=0.0  # Guardar todas las predicciones
+            )
+            
+            # Guardar predicciones con nombre de imagen como clave
+            img_name = img_path.stem
+            all_predictions[img_name] = {
+                'image_name': img_path.name,
+                'image_path': str(img_path),
+                'predictions': predictions
+            }
+        
+        # Guardar JSON con todas las predicciones
+        json_path = predictions_dir / "predictions_all.json"
+        with open(json_path, 'w') as f:
+            json.dump(all_predictions, f, indent=2)
+        
+        print(f"\n✅ Predicciones guardadas en: {json_path}")
+        print(f"   Total de imágenes procesadas: {len(all_predictions)}")
+        print(f"   Total de detecciones: {sum(len(p['predictions']) for p in all_predictions.values())}")
+        
+        return
+    
+    # Modo normal: usar dataset completo
     # Cargar anotaciones COCO
     print(f"\nCargando anotaciones desde: {args.ann_file}")
     coco = COCO(args.ann_file)
@@ -268,11 +407,30 @@ if __name__ == "__main__":
     
     parser.add_argument('--checkpoint', type=str, required=True)
     parser.add_argument('--config', type=str, required=True)
-    parser.add_argument('--img-folder', type=str, required=True)
-    parser.add_argument('--ann-file', type=str, required=True)
+    parser.add_argument('--img-folder', type=str, default=None,
+                       help='Carpeta con imágenes de test (modo normal)')
+    parser.add_argument('--ann-file', type=str, default=None,
+                       help='Archivo de anotaciones COCO (modo normal)')
     parser.add_argument('--num-images', type=int, default=20)
     parser.add_argument('--random', action='store_true')
-    parser.add_argument('--score-threshold', type=float, default=0.85)
+    parser.add_argument('--score-threshold', type=float, default=0.15,
+                       help='Score threshold para filtrar detecciones (default: 0.15)')
+    
+    # Modo imágenes seleccionadas
+    parser.add_argument('--selected-images-mode', action='store_true',
+                       help='Modo para procesar solo imágenes seleccionadas en images_selected_for_visualize/raw/')
+    parser.add_argument('--selected-images-dir', type=str,
+                       default='curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize',
+                       help='Directorio base con raw/ y predictions/')
     
     args = parser.parse_args()
+    
+    # Validar argumentos según modo
+    if args.selected_images_mode:
+        if not args.selected_images_dir:
+            parser.error("--selected-images-dir es requerido en modo selected-images-mode")
+    else:
+        if not args.img_folder or not args.ann_file:
+            parser.error("--img-folder y --ann-file son requeridos en modo normal")
+    
     main(args)
