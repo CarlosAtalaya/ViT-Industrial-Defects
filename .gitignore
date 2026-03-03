@@ -4,6 +4,8 @@ curated_dataset_splitted_20251101_provisional_1st_version/
 models/
 docs/
 DEIMv2
+venv/
+__pycache__/
 scripts/efficientnet/results/
 scripts/efficientnet/__pycache__/
 scripts/resnet18/results/

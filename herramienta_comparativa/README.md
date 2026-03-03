@@ -1,65 +1,96 @@
 # 🔬 Dashboard de Comparación de Arquitecturas
 
-Herramienta interactiva para visualizar y comparar los resultados de experimentación del TFG sobre **Detección de Defectos Industriales con Vision Transformers**.
+Herramienta interactiva e **independiente** para visualizar y comparar los resultados de experimentación del TFG sobre **Detección de Defectos Industriales con Vision Transformers vs CNNs**.
+
+Diseñada para poder exportarse como un paquete completo y funcionar en un repositorio separado sin dependencias del proyecto principal.
+
+---
 
 ## 🚀 Uso Rápido
 
 ```bash
-# 1. Instalar dependencias
+# 1. Crear entorno virtual (recomendado)
+python -m venv venv
+source venv/bin/activate  # Linux/macOS
+# venv\Scripts\activate  # Windows
+
+# 2. Instalar dependencias
 pip install -r requirements.txt
 
-# 2. Lanzar el dashboard
+# 3. Lanzar el dashboard
 streamlit run dashboard.py
 ```
 
 El dashboard se abrirá automáticamente en tu navegador en `http://localhost:8501`
 
+**Alternativa:** Usa los scripts de configuración automática en la carpeta `scripts/` (ver más abajo).
+
+---
+
+## 📦 Dependencias (Librerías)
+
+| Paquete     | Versión mínima | Uso                              |
+|-------------|----------------|----------------------------------|
+| streamlit   | 1.28.0         | Interfaz web del dashboard       |
+| pandas      | 2.0.0          | Manipulación de tablas y datos   |
+| plotly      | 5.18.0         | Gráficos interactivos            |
+| Pillow      | 10.0.0         | Carga y procesamiento de imágenes|
+| matplotlib  | 3.7.0          | Dibujo de bounding boxes         |
+| numpy       | 1.24.0         | Cálculos numéricos               |
+
+---
+
+## 📁 Estructura de la Herramienta
+
+```
+herramienta_comparativa/
+├── dashboard.py              # Aplicación principal (Streamlit)
+├── requirements.txt         # Dependencias Python
+├── README.md                 # Este archivo
+├── FASE_EXPERIMENTACION.md   # Documentación de fases
+│
+├── data/                     # Datos necesarios (todo autocontenido)
+│   ├── experiments_metadata.json    # Metadatos de experimentos
+│   ├── test.json                    # Anotaciones COCO (ground truth)
+│   │
+│   ├── images_selected_for_visualize/  # Imágenes para visualización comparativa
+│   │   ├── raw/                      # Imágenes .jpg/.png seleccionadas
+│   │   └── predictions/              # Predicciones por arquitectura
+│   │       ├── resnet18/predictions_all.json
+│   │       ├── efficientnet/predictions_all.json
+│   │       └── deimv2/predictions_all.json
+│   │
+│   ├── fase1_baseline/        # Resultados CNNs nativas
+│   ├── fase2_vit/             # Resultados Vision Transformers
+│   └── fase3_comparacion_justa/ # Resultados CNNs @ 1024px
+│
+└── scripts/                  # Scripts de configuración y arranque
+    ├── setup.sh              # Configuración automática (Linux/macOS)
+    └── setup.bat             # Configuración automática (Windows)
+```
+
+### Prioridad de Rutas de Datos
+
+El dashboard busca los datos en este orden:
+
+1. **Datos integrados** (`data/images_selected_for_visualize/`): Imágenes y predicciones embebidas en la herramienta
+2. **Datos exportados** (`data/images_selected/`, `data/predictions/`): Formato alternativo de export
+3. **Repositorio padre** (fallback): Si la herramienta está dentro del TFG, busca en `curated_dataset_splitted_.../test/images_selected_for_visualize`
+
+---
+
 ## 📋 Contenido del Dashboard
 
-### 🏠 Inicio
-- Contexto del proyecto y metodología de investigación
-- Descripción detallada de cada arquitectura evaluada
-- Información especial sobre DEIMv2 y Vision Transformers
+| Sección | Descripción |
+|---------|-------------|
+| **🏠 Inicio** | Contexto del proyecto, metodología, descripción de arquitecturas (ResNet-18, EfficientNet-B0, DEIMv2) |
+| **📜 Línea Temporal** | Evolución cronológica de las 4 fases de experimentación |
+| **🔬 Explorador** | Análisis detallado por experimento: configuración, métricas (AP, Precision, Recall), curvas de entrenamiento |
+| **📊 Comparativa** | Comparación directa entre arquitecturas con filtros y análisis de thresholds |
+| **🖼️ Visualizaciones** | Comparación visual interactiva: Ground Truth vs predicciones con threshold dinámico |
+| **📝 Conclusiones** | Tabla resumen, hallazgos principales y recomendaciones |
 
-### 📜 Línea Temporal
-- Evolución cronológica de las 3 fases de experimentación:
-  - **Fase 1 (Octubre 2024)**: Baseline con CNNs
-  - **Fase 2 (Noviembre 2024)**: Exploración de Vision Transformers
-  - **Fase 3 (Diciembre 2024)**: Validación experimental
-
-### 🔬 Explorador
-- Análisis detallado de cada experimento individual
-- Configuración de entrenamiento y mejor checkpoint
-- Métricas de evaluación: AP, Precision y Recall por clase
-- Curvas de entrenamiento
-
-### 📊 Comparativa
-- Comparación directa entre arquitecturas
-- Filtros: Todos, Mejores por arquitectura, Solo 1024x1024
-- Gráficos de mAP, AP, Precision y Recall por clase
-
-### 📝 Conclusiones
-- Tabla resumen de todos los experimentos
-- Análisis del impacto de resolución en CNNs vs ViTs
-- Hallazgos principales y recomendaciones
-
-## 📁 Estructura de Datos
-
-```
-data/
-├── experiments_metadata.json    # Metadatos de todos los experimentos
-├── fase1_baseline/              # CNNs con resolución nativa
-│   ├── resnet18_nativa/         # mAP: 0.077
-│   └── efficientnet_nativa/     # mAP: 0.162 ⭐ (mejor EfficientNet)
-├── fase2_vit/                   # Vision Transformers
-│   ├── deimv2_640_87ep/         # mAP: 0.499
-│   ├── deimv2_1024_80ep/        # mAP: 0.624
-│   ├── deimv2_1024_120ep/       # mAP: 0.766
-│   └── deimv2_1024_300ep/       # mAP: 0.785 ⭐ (mejor global)
-└── fase3_comparacion_justa/     # CNNs @ 1024x1024
-    ├── resnet18_1024/           # mAP: 0.080 ⭐ (mejor ResNet)
-    └── efficientnet_1024/       # mAP: 0.122 (peor que nativa)
-```
+---
 
 ## 📊 Resultados Principales
 
@@ -71,29 +102,53 @@ data/
 
 **Conclusión:** La arquitectura Vision Transformer (DEIMv2) supera significativamente a las CNNs tradicionales para la detección de defectos industriales.
 
-## 📦 Exportar Datos para Herramienta Independiente
+---
 
-Para hacer la herramienta completamente independiente del repositorio, exporta todos los datos necesarios:
+## 🛠️ Scripts de Configuración Automática
+
+La carpeta `scripts/` incluye scripts para configurar el entorno y lanzar la herramienta con un solo comando.
+
+### Linux / macOS (`scripts/setup.sh`)
 
 ```bash
-python3 export_data.py
+cd herramienta_comparativa
+chmod +x scripts/setup.sh
+./scripts/setup.sh
 ```
 
-Este script exporta:
-- **Imágenes seleccionadas** → `data/images_selected/`
-- **Predicciones JSON** → `data/predictions/` (resnet18_predictions.json, efficientnet_predictions.json, deimv2_predictions.json)
-- **Ground Truth** → `data/ground_truth.json` (solo anotaciones de imágenes seleccionadas)
+El script:
+1. Crea un entorno virtual Python si no existe
+2. Activa el entorno e instala dependencias
+3. Lanza el dashboard automáticamente
 
-Una vez exportados los datos, el dashboard funcionará de forma independiente usando los datos en `data/` en lugar de buscar en el repositorio completo.
+### Windows (`scripts/setup.bat`)
+
+```cmd
+cd herramienta_comparativa
+scripts\setup.bat
+```
+
+Misma funcionalidad para Windows.
+
+---
+
+## 📦 Exportar como Herramienta Independiente
+
+Para distribuir la herramienta en otro repositorio:
+
+1. **Copia toda la carpeta** `herramienta_comparativa/`
+2. Asegúrate de que `data/images_selected_for_visualize/` contiene:
+   - `raw/` con imágenes
+   - `predictions/` con los JSON de cada arquitectura
+3. Incluye `data/test.json` para las anotaciones ground truth
+4. El dashboard funcionará sin depender del repositorio del TFG
+
+---
 
 ## 🛠️ Requisitos
 
-- Python 3.8+
-- Streamlit >= 1.28.0
-- Pandas >= 2.0.0
-- Plotly >= 5.18.0
-- Pillow >= 10.0.0
-- Matplotlib >= 3.7.0
+- **Python:** 3.8 o superior
+- **Sistema:** Cualquier SO con Python (Linux, macOS, Windows)
 
 ---
 *TFG 2025-26 - Detección de Defectos Industriales con Vision Transformers*

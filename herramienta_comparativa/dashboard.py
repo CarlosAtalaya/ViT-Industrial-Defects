@@ -26,9 +26,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Ruta base de datos
-DATA_PATH = Path(__file__).parent / "data"
+# Ruta base de la herramienta (herramienta_comparativa/) - permite export completo e independiente
+TOOL_ROOT = Path(__file__).parent
+DATA_PATH = TOOL_ROOT / "data"
 METADATA_FILE = DATA_PATH / "experiments_metadata.json"
+
+# Ruta raíz del proyecto padre (solo usada como fallback si datos no están en data/)
+PROJECT_ROOT = TOOL_ROOT.parent
 
 # --- ESTILOS CSS ---
 st.markdown("""
@@ -1204,19 +1208,33 @@ def render_conclusions(metadata):
 @st.cache_data
 def load_predictions_json(architecture):
     """Carga predicciones desde JSON para una arquitectura específica."""
-    # Intentar datos exportados primero
-    DATA_DIR = Path(__file__).parent / "data"
-    exported_json = DATA_DIR / "predictions" / f"{architecture}_predictions.json"
-    
+    # 1. Intentar datos exportados (formato plano: data/predictions/{arch}_predictions.json)
+    exported_json = DATA_PATH / "predictions" / f"{architecture}_predictions.json"
     if exported_json.exists():
         with open(exported_json, 'r') as f:
             return json.load(f)
     
-    # Fallback a datos originales
-    predictions_dir = Path("curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/predictions")
+    # 2. Intentar datos locales (herramienta independiente: data/images_selected_for_visualize/predictions/)
+    local_predictions_dir = DATA_PATH / "images_selected_for_visualize" / "predictions"
+    local_json_path = local_predictions_dir / architecture / "predictions_all.json"
+    if local_json_path.exists():
+        with open(local_json_path, 'r') as f:
+            return json.load(f)
+    
+    # 3. Fallback: datos en repositorio padre
+    predictions_dir = (PROJECT_ROOT / "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/predictions").resolve()
     json_path = predictions_dir / architecture / "predictions_all.json"
     
     if not json_path.exists():
+        # Debug: mostrar qué ruta se está buscando
+        import os
+        if os.getenv("STREAMLIT_DEBUG", "0") == "1":
+            print(f"⚠️ No se encontró: {json_path}")
+            print(f"   PROJECT_ROOT: {PROJECT_ROOT}")
+            print(f"   predictions_dir: {predictions_dir}")
+            print(f"   predictions_dir existe: {predictions_dir.exists()}")
+            if predictions_dir.exists():
+                print(f"   Contenido de predictions_dir: {list(predictions_dir.iterdir())}")
         return None
     
     with open(json_path, 'r') as f:
@@ -1305,25 +1323,24 @@ def draw_predictions_on_image(img, predictions, category_names, score_threshold=
 @st.cache_data
 def load_ground_truth_annotations():
     """Carga anotaciones ground truth desde el archivo COCO del test."""
-    # Intentar datos exportados primero
-    DATA_DIR = Path(__file__).parent / "data"
-    exported_gt = DATA_DIR / "ground_truth.json"
-    
+    # 1. Intentar datos exportados (ground_truth.json filtrado)
+    exported_gt = DATA_PATH / "ground_truth.json"
     if exported_gt.exists():
         with open(exported_gt, 'r') as f:
             coco_data = json.load(f)
     else:
-        # Fallback a datos originales
-        test_json_path = Path("curated_dataset_splitted_20251101_provisional_1st_version/test/test.json")
-        
-        if not test_json_path.exists():
-            return None
-        
-        with open(test_json_path, 'r') as f:
-            coco_data = json.load(f)
-    
-    with open(test_json_path, 'r') as f:
-        coco_data = json.load(f)
+        # 2. Intentar test.json local (herramienta independiente)
+        local_test_json = DATA_PATH / "test.json"
+        if local_test_json.exists():
+            with open(local_test_json, 'r') as f:
+                coco_data = json.load(f)
+        else:
+            # 3. Fallback: datos en repositorio padre
+            test_json_path = (PROJECT_ROOT / "curated_dataset_splitted_20251101_provisional_1st_version/test/test.json").resolve()
+            if not test_json_path.exists():
+                return None
+            with open(test_json_path, 'r') as f:
+                coco_data = json.load(f)
     
     # Crear índice de anotaciones por nombre de archivo
     image_name_to_annotations = {}
@@ -1356,41 +1373,78 @@ def render_visualizations(metadata):
     
     st.markdown("---")
     
-    # Rutas: primero intentar datos exportados (herramienta independiente), luego datos originales
-    DATA_DIR = Path(__file__).parent / "data"
-    
-    # Intentar usar datos exportados primero
-    if (DATA_DIR / "images_selected").exists() and list((DATA_DIR / "images_selected").glob("*")):
-        RAW_IMAGES_DIR = DATA_DIR / "images_selected"
-        PREDICTIONS_DIR = DATA_DIR / "predictions"
-        GT_JSON = DATA_DIR / "ground_truth.json"
-        print("📦 Usando datos exportados (herramienta independiente)")
+    # Rutas: prioridad para datos locales (herramienta independiente y exportable)
+    # 1. Datos exportados (formato: data/images_selected/)
+    if (DATA_PATH / "images_selected").exists() and list((DATA_PATH / "images_selected").glob("*")):
+        RAW_IMAGES_DIR = DATA_PATH / "images_selected"
+        st.info("📦 Usando datos exportados (data/images_selected)")
+    # 2. Datos locales integrados (data/images_selected_for_visualize/raw/)
+    elif (DATA_PATH / "images_selected_for_visualize" / "raw").exists():
+        RAW_IMAGES_DIR = (DATA_PATH / "images_selected_for_visualize" / "raw").resolve()
+        st.info("📦 Usando datos integrados (data/images_selected_for_visualize)")
     else:
-        # Fallback a datos originales del repositorio
-        SELECTED_IMAGES_BASE = Path("curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize")
-        RAW_IMAGES_DIR = SELECTED_IMAGES_BASE / "raw"
-        PREDICTIONS_DIR = SELECTED_IMAGES_BASE / "predictions"
-        GT_JSON = Path("curated_dataset_splitted_20251101_provisional_1st_version/test/test.json")
-        print("📦 Usando datos del repositorio completo")
+        # 3. Fallback: datos en repositorio padre
+        SELECTED_IMAGES_BASE = PROJECT_ROOT / "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize"
+        RAW_IMAGES_DIR = (SELECTED_IMAGES_BASE / "raw").resolve()
+        
+        if os.getenv("STREAMLIT_DEBUG", "0") == "1":
+            st.info(f"📦 **Debug:** Usando datos del repositorio padre (`{RAW_IMAGES_DIR}`)")
     
     # Verificar que existe la estructura
     if not RAW_IMAGES_DIR.exists():
-        st.warning(f"""
-        ⚠️ **No se encontró la carpeta de imágenes seleccionadas**
+        # Intentar rutas alternativas
+        alternative_paths = [
+            DATA_PATH / "images_selected_for_visualize" / "raw",
+            DATA_PATH / "images_selected",
+            Path.cwd() / "data" / "images_selected_for_visualize" / "raw",
+            Path.cwd().parent / "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw",
+            Path.cwd() / "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw",
+        ]
         
-        La carpeta esperada es: `{RAW_IMAGES_DIR}`
+        found_alternative = None
+        for alt_path in alternative_paths:
+            alt_resolved = alt_path.resolve()
+            if alt_resolved.exists():
+                found_alternative = alt_resolved
+                break
         
-        Por favor:
-        1. Crea la carpeta `images_selected_for_visualize/raw/`
-        2. Coloca las imágenes que quieres visualizar en `raw/`
-        3. Ejecuta los scripts de visualización en modo `--selected-images-mode`
-        """)
-        return
+        if found_alternative:
+            RAW_IMAGES_DIR = found_alternative
+            st.success(f"✅ Imágenes encontradas en ubicación alternativa: `{RAW_IMAGES_DIR}`")
+        else:
+            st.error(f"""
+            ⚠️ **No se encontró la carpeta de imágenes seleccionadas**
+            
+            **Ruta buscada (absoluta):** `{RAW_IMAGES_DIR}`
+            
+            **Directorio de la herramienta:** `{TOOL_ROOT}`
+            
+            **Directorio de trabajo actual:** `{Path.cwd()}`
+            
+            **Rutas alternativas probadas:**
+            {chr(10).join(f'  - {p.resolve()}' for p in alternative_paths)}
+            
+            Por favor verifica:
+            1. Que existe `data/images_selected_for_visualize/raw/` con imágenes .jpg o .png
+            2. Que tienes permisos de lectura
+            3. Si usas el formato exportado, que existe `data/images_selected/`
+            """)
+            return
     
     # Cargar predicciones de cada arquitectura
     predictions_resnet = load_predictions_json("resnet18")
     predictions_efficientnet = load_predictions_json("efficientnet")
     predictions_deimv2 = load_predictions_json("deimv2")
+    
+    # Debug: mostrar qué predicciones se cargaron
+    import os
+    if os.getenv("STREAMLIT_DEBUG", "0") == "1":
+        st.info(f"""
+        **Debug - Predicciones cargadas:**
+        - ResNet-18: {'✅' if predictions_resnet else '❌'}
+        - EfficientNet: {'✅' if predictions_efficientnet else '❌'}
+        - DEIMv2: {'✅' if predictions_deimv2 else '❌'}
+        """)
     
     if not any([predictions_resnet, predictions_efficientnet, predictions_deimv2]):
         st.warning("""
@@ -1398,26 +1452,11 @@ def render_visualizations(metadata):
         
         Para generar predicciones, ejecuta los scripts en modo `--selected-images-mode`:
         
-        ```bash
-        # DEIMv2
-        python3 scripts/deimv2_multimodal/visualize_deimv2_predictions.py \\
-            --checkpoint <ruta_checkpoint> \\
-            --config scripts/deimv2_multimodal/configs/deimv2_industrial_defects.yml \\
-            --selected-images-mode \\
-            --selected-images-dir curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize
+        Las predicciones deben estar en:
+        - `data/predictions/{arch}_predictions.json` (formato exportado), o
+        - `data/images_selected_for_visualize/predictions/{resnet18,efficientnet,deimv2}/predictions_all.json`
         
-        # ResNet-18
-        python3 scripts/resnet18/visualize_predictions.py \\
-            --checkpoint <ruta_checkpoint> \\
-            --dataset-path curated_dataset_splitted_20251101_provisional_1st_version \\
-            --selected-images-mode
-        
-        # EfficientNet
-        python3 scripts/efficientnet/visualize_predictions.py \\
-            --checkpoint <ruta_checkpoint> \\
-            --dataset-path curated_dataset_splitted_20251101_provisional_1st_version \\
-            --selected-images-mode
-        ```
+        Si trabajas con el repositorio completo del TFG, ejecuta los scripts de visualización con `--selected-images-mode` apuntando a la carpeta de imágenes.
         """)
         return
     

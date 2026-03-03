@@ -1,0 +1,511 @@
+{
+  "000012": {
+    "image_name": "000012.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/000012.png",
+    "predictions": []
+  },
+  "000012_1": {
+    "image_name": "000012_1.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/000012_1.png",
+    "predictions": [
+      {
+        "category_id": 3,
+        "bbox": [
+          150.04598999023438,
+          55.12688064575195,
+          2296.0726623535156,
+          2435.555004119873
+        ],
+        "score": 0.07085801661014557
+      },
+      {
+        "category_id": 2,
+        "bbox": [
+          78.50188446044922,
+          43.12086868286133,
+          2324.342353820801,
+          2494.8935356140137
+        ],
+        "score": 0.06932194530963898
+      }
+    ]
+  },
+  "000027_1_aug1993": {
+    "image_name": "000027_1_aug1993.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/000027_1_aug1993.png",
+    "predictions": []
+  },
+  "000029_aug2171": {
+    "image_name": "000029_aug2171.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/000029_aug2171.png",
+    "predictions": []
+  },
+  "000044": {
+    "image_name": "000044.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/000044.png",
+    "predictions": []
+  },
+  "000046_1_aug2065": {
+    "image_name": "000046_1_aug2065.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/000046_1_aug2065.png",
+    "predictions": []
+  },
+  "000051_3": {
+    "image_name": "000051_3.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/000051_3.png",
+    "predictions": [
+      {
+        "category_id": 4,
+        "bbox": [
+          981.3715209960938,
+          195.11119079589844,
+          51.45635986328125,
+          177.74928283691406
+        ],
+        "score": 0.05861787125468254
+      },
+      {
+        "category_id": 4,
+        "bbox": [
+          975.5535888671875,
+          227.9420623779297,
+          66.9129638671875,
+          94.61473083496094
+        ],
+        "score": 0.05411619320511818
+      },
+      {
+        "category_id": 4,
+        "bbox": [
+          968.2532958984375,
+          134.1148681640625,
+          46.87139892578125,
+          20.654449462890625
+        ],
+        "score": 0.052114784717559814
+      },
+      {
+        "category_id": 4,
+        "bbox": [
+          1000.7890625,
+          119.53897094726562,
+          60.3740234375,
+          50.21525573730469
+        ],
+        "score": 0.05084831267595291
+      },
+      {
+        "category_id": 4,
+        "bbox": [
+          1042.956787109375,
+          111.72547149658203,
+          109.247314453125,
+          67.01197052001953
+        ],
+        "score": 0.050805721431970596
+      }
+    ]
+  },
+  "000064_aug1912": {
+    "image_name": "000064_aug1912.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/000064_aug1912.png",
+    "predictions": []
+  },
+  "000073_1": {
+    "image_name": "000073_1.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/000073_1.png",
+    "predictions": []
+  },
+  "000084_1_aug2047": {
+    "image_name": "000084_1_aug2047.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/000084_1_aug2047.png",
+    "predictions": []
+  },
+  "000090_1_aug1991": {
+    "image_name": "000090_1_aug1991.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/000090_1_aug1991.png",
+    "predictions": []
+  },
+  "000120": {
+    "image_name": "000120.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/000120.png",
+    "predictions": []
+  },
+  "000121_1": {
+    "image_name": "000121_1.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/000121_1.png",
+    "predictions": []
+  },
+  "000126_2_aug2198": {
+    "image_name": "000126_2_aug2198.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/000126_2_aug2198.png",
+    "predictions": [
+      {
+        "category_id": 4,
+        "bbox": [
+          1474.76025390625,
+          104.96358489990234,
+          132.7685546875,
+          67.22374725341797
+        ],
+        "score": 0.06224272400140762
+      },
+      {
+        "category_id": 4,
+        "bbox": [
+          1419.6505126953125,
+          120.88273620605469,
+          79.74169921875,
+          48.159759521484375
+        ],
+        "score": 0.0551876500248909
+      },
+      {
+        "category_id": 4,
+        "bbox": [
+          1428.39013671875,
+          112.49153137207031,
+          19.435302734375,
+          71.39511108398438
+        ],
+        "score": 0.05516353249549866
+      },
+      {
+        "category_id": 4,
+        "bbox": [
+          1411.6429443359375,
+          136.23963928222656,
+          43.6397705078125,
+          20.737213134765625
+        ],
+        "score": 0.055120017379522324
+      }
+    ]
+  },
+  "007-14": {
+    "image_name": "007-14.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/007-14.png",
+    "predictions": [
+      {
+        "category_id": 3,
+        "bbox": [
+          0.0,
+          0.0,
+          988.089111328125,
+          1000.0
+        ],
+        "score": 0.4058094918727875
+      },
+      {
+        "category_id": 2,
+        "bbox": [
+          0.0,
+          0.0,
+          1000.0,
+          1000.0
+        ],
+        "score": 0.23901183903217316
+      },
+      {
+        "category_id": 1,
+        "bbox": [
+          0.0,
+          0.0,
+          1000.0,
+          1000.0
+        ],
+        "score": 0.07708897441625595
+      }
+    ]
+  },
+  "007-4": {
+    "image_name": "007-4.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/007-4.png",
+    "predictions": [
+      {
+        "category_id": 1,
+        "bbox": [
+          1.1286718845367432,
+          11.133671760559082,
+          1022.8713281154633,
+          1012.8663282394409
+        ],
+        "score": 0.262637734413147
+      },
+      {
+        "category_id": 3,
+        "bbox": [
+          0.0,
+          11.913593292236328,
+          1024.0,
+          1012.0864067077637
+        ],
+        "score": 0.05649823695421219
+      }
+    ]
+  },
+  "007": {
+    "image_name": "007.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/007.png",
+    "predictions": [
+      {
+        "category_id": 1,
+        "bbox": [
+          2.0771093368530273,
+          0.0,
+          1021.922890663147,
+          1024.0
+        ],
+        "score": 0.2774145305156708
+      },
+      {
+        "category_id": 3,
+        "bbox": [
+          0.0,
+          14.140975952148438,
+          1024.0,
+          1009.8590240478516
+        ],
+        "score": 0.06149560958147049
+      }
+    ]
+  },
+  "009-14": {
+    "image_name": "009-14.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/009-14.png",
+    "predictions": [
+      {
+        "category_id": 3,
+        "bbox": [
+          14.434928894042969,
+          0.0,
+          967.2363357543945,
+          1000.0
+        ],
+        "score": 0.3930304944515228
+      },
+      {
+        "category_id": 2,
+        "bbox": [
+          7.464408874511719,
+          0.0,
+          974.5785598754883,
+          1000.0
+        ],
+        "score": 0.24156765639781952
+      },
+      {
+        "category_id": 1,
+        "bbox": [
+          0.0,
+          0.0,
+          1000.0,
+          1000.0
+        ],
+        "score": 0.07909654080867767
+      }
+    ]
+  },
+  "010-8": {
+    "image_name": "010-8.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/010-8.png",
+    "predictions": [
+      {
+        "category_id": 3,
+        "bbox": [
+          2.4706268310546875,
+          0.0,
+          983.3241119384766,
+          997.3342895507812
+        ],
+        "score": 0.40067023038864136
+      },
+      {
+        "category_id": 2,
+        "bbox": [
+          0.0,
+          0.0,
+          994.9451904296875,
+          1000.0
+        ],
+        "score": 0.23847585916519165
+      },
+      {
+        "category_id": 1,
+        "bbox": [
+          0.0,
+          0.0,
+          1000.0,
+          1000.0
+        ],
+        "score": 0.07978766411542892
+      }
+    ]
+  },
+  "012-13": {
+    "image_name": "012-13.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/012-13.png",
+    "predictions": [
+      {
+        "category_id": 1,
+        "bbox": [
+          0.6471176147460938,
+          0.0,
+          699.3528823852539,
+          700.0
+        ],
+        "score": 0.5312769412994385
+      },
+      {
+        "category_id": 3,
+        "bbox": [
+          0.0,
+          0.0,
+          700.0,
+          700.0
+        ],
+        "score": 0.24105675518512726
+      }
+    ]
+  },
+  "013-16_aug2036": {
+    "image_name": "013-16_aug2036.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/013-16_aug2036.png",
+    "predictions": [
+      {
+        "category_id": 1,
+        "bbox": [
+          0.0,
+          0.0,
+          692.2549438476562,
+          700.0
+        ],
+        "score": 0.5242029428482056
+      },
+      {
+        "category_id": 3,
+        "bbox": [
+          0.0,
+          0.0,
+          694.9411010742188,
+          699.622314453125
+        ],
+        "score": 0.24642950296401978
+      }
+    ]
+  },
+  "015-55": {
+    "image_name": "015-55.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/015-55.png",
+    "predictions": [
+      {
+        "category_id": 1,
+        "bbox": [
+          19.93570327758789,
+          0.0,
+          1004.0642967224121,
+          1024.0
+        ],
+        "score": 0.4738130569458008
+      },
+      {
+        "category_id": 3,
+        "bbox": [
+          8.326250076293945,
+          0.0,
+          1015.673749923706,
+          1024.0
+        ],
+        "score": 0.11549751460552216
+      },
+      {
+        "category_id": 2,
+        "bbox": [
+          14.220351219177246,
+          7.175859451293945,
+          968.966477394104,
+          1016.824140548706
+        ],
+        "score": 0.06121356785297394
+      }
+    ]
+  },
+  "016-18_aug1943": {
+    "image_name": "016-18_aug1943.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/016-18_aug1943.png",
+    "predictions": [
+      {
+        "category_id": 1,
+        "bbox": [
+          1.73590087890625,
+          0.0,
+          698.2640991210938,
+          700.0
+        ],
+        "score": 0.5387484431266785
+      },
+      {
+        "category_id": 3,
+        "bbox": [
+          0.8911552429199219,
+          0.0,
+          699.1088447570801,
+          700.0
+        ],
+        "score": 0.2450518161058426
+      }
+    ]
+  },
+  "132-10": {
+    "image_name": "132-10.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/132-10.png",
+    "predictions": [
+      {
+        "category_id": 1,
+        "bbox": [
+          0.0,
+          1.1901171207427979,
+          1024.0,
+          1022.8098828792572
+        ],
+        "score": 0.5566226243972778
+      },
+      {
+        "category_id": 3,
+        "bbox": [
+          0.0,
+          0.0,
+          1024.0,
+          1024.0
+        ],
+        "score": 0.1237601563334465
+      }
+    ]
+  },
+  "201": {
+    "image_name": "201.png",
+    "image_path": "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw/201.png",
+    "predictions": [
+      {
+        "category_id": 1,
+        "bbox": [
+          0.7005468606948853,
+          4.698905944824219,
+          1023.2994531393051,
+          1019.3010940551758
+        ],
+        "score": 0.35180139541625977
+      },
+      {
+        "category_id": 3,
+        "bbox": [
+          0.0,
+          21.301523208618164,
+          1024.0,
+          1002.6984767913818
+        ],
+        "score": 0.0747884213924408
+      }
+    ]
+  }
+}
