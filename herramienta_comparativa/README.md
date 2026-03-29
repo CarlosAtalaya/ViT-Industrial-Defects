@@ -71,11 +71,11 @@ herramienta_comparativa/
 
 ### Prioridad de Rutas de Datos
 
-El dashboard busca los datos en este orden:
+El dashboard busca los datos en este orden (sin depender de rutas externas al paquete de la herramienta):
 
-1. **Datos integrados** (`data/images_selected_for_visualize/`): Imágenes y predicciones embebidas en la herramienta
-2. **Datos exportados** (`data/images_selected/`, `data/predictions/`): Formato alternativo de export
-3. **Repositorio padre** (fallback): Si la herramienta está dentro del TFG, busca en `curated_dataset_splitted_.../test/images_selected_for_visualize`
+1. **Predicciones:** `data/predictions/{arquitectura}_predictions.json` (export) o `data/images_selected_for_visualize/predictions/{resnet18,efficientnet,deimv2}/predictions_all.json`
+2. **Ground truth COCO:** `data/ground_truth.json` (export), luego `data/images_selected_for_visualize/test.json`, luego `data/test.json`
+3. **Imágenes raw:** `data/images_selected/` (export) o `data/images_selected_for_visualize/raw/`
 
 ---
 
@@ -140,8 +140,8 @@ Para distribuir la herramienta en otro repositorio:
 2. Asegúrate de que `data/images_selected_for_visualize/` contiene:
    - `raw/` con imágenes
    - `predictions/` con los JSON de cada arquitectura
-3. Incluye `data/test.json` para las anotaciones ground truth
-4. El dashboard funcionará sin depender del repositorio del TFG
+3. Incluye `data/test.json` (o `data/images_selected_for_visualize/test.json`) para las anotaciones ground truth
+4. El dashboard solo necesita la carpeta `herramienta_comparativa/`; no requiere el dataset curado completo en la raíz del repo
 
 ---
 

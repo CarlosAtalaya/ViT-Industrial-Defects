@@ -31,8 +31,8 @@ TOOL_ROOT = Path(__file__).parent
 DATA_PATH = TOOL_ROOT / "data"
 METADATA_FILE = DATA_PATH / "experiments_metadata.json"
 
-# Ruta raíz del proyecto padre (solo usada como fallback si datos no están en data/)
-PROJECT_ROOT = TOOL_ROOT.parent
+# Raíz de datos empaquetados para la vista «Visualizaciones» (predicciones, GT, raw/)
+VISUALIZATION_DATA_ROOT = DATA_PATH / "images_selected_for_visualize"
 
 # --- ESTILOS CSS ---
 st.markdown("""
@@ -1214,31 +1214,14 @@ def load_predictions_json(architecture):
         with open(exported_json, 'r') as f:
             return json.load(f)
     
-    # 2. Intentar datos locales (herramienta independiente: data/images_selected_for_visualize/predictions/)
-    local_predictions_dir = DATA_PATH / "images_selected_for_visualize" / "predictions"
+    # 2. Datos locales empaquetados: data/images_selected_for_visualize/predictions/
+    local_predictions_dir = VISUALIZATION_DATA_ROOT / "predictions"
     local_json_path = local_predictions_dir / architecture / "predictions_all.json"
     if local_json_path.exists():
         with open(local_json_path, 'r') as f:
             return json.load(f)
     
-    # 3. Fallback: datos en repositorio padre
-    predictions_dir = (PROJECT_ROOT / "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/predictions").resolve()
-    json_path = predictions_dir / architecture / "predictions_all.json"
-    
-    if not json_path.exists():
-        # Debug: mostrar qué ruta se está buscando
-        import os
-        if os.getenv("STREAMLIT_DEBUG", "0") == "1":
-            print(f"⚠️ No se encontró: {json_path}")
-            print(f"   PROJECT_ROOT: {PROJECT_ROOT}")
-            print(f"   predictions_dir: {predictions_dir}")
-            print(f"   predictions_dir existe: {predictions_dir.exists()}")
-            if predictions_dir.exists():
-                print(f"   Contenido de predictions_dir: {list(predictions_dir.iterdir())}")
-        return None
-    
-    with open(json_path, 'r') as f:
-        return json.load(f)
+    return None
 
 
 def draw_ground_truth_on_image(img, gt_annotations, category_names):
@@ -1329,18 +1312,18 @@ def load_ground_truth_annotations():
         with open(exported_gt, 'r') as f:
             coco_data = json.load(f)
     else:
-        # 2. Intentar test.json local (herramienta independiente)
+        # 2. test.json junto al paquete de visualización (portable)
+        bundled_test_json = VISUALIZATION_DATA_ROOT / "test.json"
+        # 3. test.json en la raíz de data/ (layout habitual del repo)
         local_test_json = DATA_PATH / "test.json"
-        if local_test_json.exists():
+        if bundled_test_json.exists():
+            with open(bundled_test_json, 'r') as f:
+                coco_data = json.load(f)
+        elif local_test_json.exists():
             with open(local_test_json, 'r') as f:
                 coco_data = json.load(f)
         else:
-            # 3. Fallback: datos en repositorio padre
-            test_json_path = (PROJECT_ROOT / "curated_dataset_splitted_20251101_provisional_1st_version/test/test.json").resolve()
-            if not test_json_path.exists():
-                return None
-            with open(test_json_path, 'r') as f:
-                coco_data = json.load(f)
+            return None
     
     # Crear índice de anotaciones por nombre de archivo
     image_name_to_annotations = {}
@@ -1374,31 +1357,25 @@ def render_visualizations(metadata):
     st.markdown("---")
     
     # Rutas: prioridad para datos locales (herramienta independiente y exportable)
+    # Por defecto se asume el layout empaquetado bajo data/images_selected_for_visualize/raw/
+    RAW_IMAGES_DIR = VISUALIZATION_DATA_ROOT / "raw"
     # 1. Datos exportados (formato: data/images_selected/)
     if (DATA_PATH / "images_selected").exists() and list((DATA_PATH / "images_selected").glob("*")):
         RAW_IMAGES_DIR = DATA_PATH / "images_selected"
         st.info("📦 Usando datos exportados (data/images_selected)")
     # 2. Datos locales integrados (data/images_selected_for_visualize/raw/)
-    elif (DATA_PATH / "images_selected_for_visualize" / "raw").exists():
-        RAW_IMAGES_DIR = (DATA_PATH / "images_selected_for_visualize" / "raw").resolve()
-        st.info("📦 Usando datos integrados (data/images_selected_for_visualize)")
-    else:
-        # 3. Fallback: datos en repositorio padre
-        SELECTED_IMAGES_BASE = PROJECT_ROOT / "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize"
-        RAW_IMAGES_DIR = (SELECTED_IMAGES_BASE / "raw").resolve()
-        
-        if os.getenv("STREAMLIT_DEBUG", "0") == "1":
-            st.info(f"📦 **Debug:** Usando datos del repositorio padre (`{RAW_IMAGES_DIR}`)")
+    elif (VISUALIZATION_DATA_ROOT / "raw").exists():
+        RAW_IMAGES_DIR = (VISUALIZATION_DATA_ROOT / "raw").resolve()
+        st.info("📦 Usando datos integrados (`data/images_selected_for_visualize/raw/`)")
     
     # Verificar que existe la estructura
     if not RAW_IMAGES_DIR.exists():
-        # Intentar rutas alternativas
+        # Intentar rutas alternativas (cwd relativo al lanzar streamlit)
         alternative_paths = [
-            DATA_PATH / "images_selected_for_visualize" / "raw",
+            VISUALIZATION_DATA_ROOT / "raw",
             DATA_PATH / "images_selected",
             Path.cwd() / "data" / "images_selected_for_visualize" / "raw",
-            Path.cwd().parent / "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw",
-            Path.cwd() / "curated_dataset_splitted_20251101_provisional_1st_version/test/images_selected_for_visualize/raw",
+            TOOL_ROOT / "data" / "images_selected_for_visualize" / "raw",
         ]
         
         found_alternative = None
@@ -1456,7 +1433,7 @@ def render_visualizations(metadata):
         - `data/predictions/{arch}_predictions.json` (formato exportado), o
         - `data/images_selected_for_visualize/predictions/{resnet18,efficientnet,deimv2}/predictions_all.json`
         
-        Si trabajas con el repositorio completo del TFG, ejecuta los scripts de visualización con `--selected-images-mode` apuntando a la carpeta de imágenes.
+        Coloca los JSON en `data/images_selected_for_visualize/predictions/` o genera predicciones con los scripts de visualización (`--selected-images-mode`) apuntando a `data/images_selected_for_visualize/`.
         """)
         return
     

@@ -2,7 +2,8 @@
 
 **Proyecto:** TFG 2025-26  
 **Autor:** Carlos  
-**Dataset:** curated_dataset_splitted_20251101_provisional_1st_version  
+**Dataset (experimentación):** versión curada y particionada usada en entrenamiento/evaluación (nombre interno: `curated_dataset_splitted_20251101_provisional_1st_version`; no versionada en Git por tamaño).  
+**Visualización en dashboard:** subconjunto empaquetado en `herramienta_comparativa/data/images_selected_for_visualize/` (`raw/`, `predictions/`, opcionalmente `test.json`).
 **Fecha:** Octubre - Diciembre 2025
 
 ---
