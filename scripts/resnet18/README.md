@@ -240,71 +240,11 @@ Una buena convergencia se observa cuando:
 --num-workers 2  # Reducir workers
 ```
 
-## 🎯 Próximos Pasos para tu TFG
+## Otras rutas en el repositorio
 
-### 1. Experimentos Adicionales con CNNs Clásicas
+Este directorio cubre el baseline **ResNet-18 + Faster R-CNN**. La comparativa con **EfficientNet** y **DEIMv2**, así como el dashboard Streamlit, están en `scripts/efficientnet/`, `scripts/deimv2_multimodal/` y `herramienta_comparativa/`.
 
-#### EfficientNet
-
-Crear un script similar pero con EfficientNet como backbone:
-
-```python
-from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
-
-def get_model_efficientnet_fasterrcnn(num_classes):
-    backbone = efficientnet_b0(weights=EfficientNet_B0_Weights.IMAGENET1K_V1)
-    # Adaptar para Faster R-CNN...
-```
-
-#### Otros backbones clásicos a probar:
-- ResNet-50 (más profundo)
-- MobileNetV3 (más ligero)
-- VGG-16 (arquitectura clásica)
-
-### 2. Comparación con Vision Transformers
-
-Para tu línea de investigación principal, el siguiente paso sería:
-
-#### DINOv2 + Detection Head
-
-```python
-# Ejemplo conceptual
-from transformers import AutoModel
-
-backbone = AutoModel.from_pretrained("facebook/dinov2-base")
-# Adaptar para detección...
-```
-
-**Ventajas de ViT vs CNN:**
-- Mejor capacidad de atención global
-- Mejores features para defectos pequeños
-- Transfer learning más efectivo
-
-### 3. Análisis Comparativo
-
-Crear una tabla comparativa con:
-
-| Modelo | Backbone | mAP | Params | Inference Time | GPU Memory |
-|--------|----------|-----|--------|----------------|------------|
-| ResNet-18 + Faster R-CNN | ResNet-18 | ? | 11M | ? | ? |
-| ResNet-50 + Faster R-CNN | ResNet-50 | ? | 25M | ? | ? |
-| EfficientNet + Faster R-CNN | EfficientNet-B0 | ? | 5M | ? | ? |
-| DINOv2 + Detection Head | ViT-B | ? | 86M | ? | ? |
-
-### 4. Mejoras del Dataset
-
-- **Augmentation adicional**: rotaciones, flips, cambios de brillo
-- **Balanceo de clases**: técnicas de re-sampling o loss weighting
-- **Detección de falsos positivos**: análisis de errores comunes
-
-### 5. Análisis de Errores
-
-Crear un notebook para:
-- Visualizar casos donde el modelo falla
-- Analizar confusiones entre categorías
-- Identificar patrones en errores (tamaño, ubicación, etc.)
-
-## 📝 Notas Importantes
+## 📝 Notas importantes
 
 ### Sobre ResNet-18 vs Hugging Face
 
@@ -367,8 +307,4 @@ El dataset loader filtra automáticamente bboxes inválidos. Verifica que tus an
 
 ## 📧 Contacto
 
-Para dudas sobre el código o sugerencias de mejora, no dudes en contactar.
-
----
-
-**Éxito con tu TFG! 🎓🚀**
+Para dudas sobre el código o sugerencias de mejora, abre un issue en el repositorio del proyecto.

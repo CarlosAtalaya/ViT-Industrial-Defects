@@ -1,0 +1,3 @@
+,inspect_train,inspect_val,inspect_test,total
+mvtec,362,51,104,517
+vision,353,51,101,505

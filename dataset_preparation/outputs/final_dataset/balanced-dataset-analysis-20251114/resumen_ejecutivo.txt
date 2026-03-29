@@ -1,0 +1,28 @@
+RESUMEN EJECUTIVO – ANÁLISIS DEL DATASET PARA ENTRENAMIENTO ViT + DINOv3
+Total de imágenes: 1022
+
+=== DISTRIBUCIÓN DE CATEGORÍAS ===
+PERFORACIONES: 328
+NORMAL: 300
+ROTURA_FRACTURA: 211
+DEFORMACIONES: 195
+RAYONES_ARANAZOS: 162
+CONTAMINACION: 158
+
+=== ESTADÍSTICAS DE BOUNDING BOXES ===
+inspect_train -> bboxes=944, width_mean=450.5, height_mean=412.8, area_mean=338575.8, AR_mean=1.49, small_pct=23.41%
+inspect_val -> bboxes=145, width_mean=431.8, height_mean=381.0, area_mean=311226.6, AR_mean=1.87, small_pct=16.55%
+inspect_test -> bboxes=265, width_mean=459.0, height_mean=416.1, area_mean=338264.8, AR_mean=1.54, small_pct=16.98%
+
+=== TAMAÑOS DE IMÁGENES ===
+inspect_train -> n=715, width_mean=1647.5, height_mean=1347.4, area_mean=3089967.1
+inspect_val -> n=102, width_mean=1735.2, height_mean=1456.7, area_mean=3560515.8
+inspect_test -> n=205, width_mean=1703.7, height_mean=1415.1, area_mean=3370649.8
+
+=== AUGMENTATION ===
+inspect_train -> augmented=35.94%, original=64.06%
+inspect_val -> augmented=38.24%, original=61.76%
+inspect_test -> augmented=35.12%, original=64.88%
+
+=== OBSERVACIONES ===
+Dataset balanceado, variabilidad alta en tamaños, presencia de objetos pequeños, AR extremos y buen nivel de augmentación.

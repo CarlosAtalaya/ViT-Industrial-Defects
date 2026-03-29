@@ -1,0 +1,66 @@
+================================================================================
+REPORTE DE ANÁLISIS DE BALANCE DEL DATASET
+================================================================================
+
+## RESUMEN GENERAL
+
+- Inspect_train: 715 imágenes
+  - 944 anotaciones
+- Inspect_val: 102 imágenes
+  - 145 anotaciones
+- Inspect_test: 205 imágenes
+  - 265 anotaciones
+
+**Total**: 1022 imágenes, 1354 anotaciones
+
+## PROBLEMAS CRÍTICOS DETECTADOS
+
+### INSPECT_TRAIN
+🚨 CRÍTICO: Muchos bboxes pequeños
+   - 23.4% tienen width < 32px
+   - 22.2% tienen height < 32px
+   ⚠️  Faster R-CNN tiene RPN con anchors mínimos de 32px
+
+Estadísticas medianas:
+   - Width: 222.4 px
+   - Height: 132.5 px
+   - Área: 6081.5 px²
+   - Aspect Ratio: 1.00
+
+### INSPECT_VAL
+🚨 CRÍTICO: Muchos bboxes pequeños
+   - 16.6% tienen width < 32px
+   - 20.0% tienen height < 32px
+   ⚠️  Faster R-CNN tiene RPN con anchors mínimos de 32px
+
+Estadísticas medianas:
+   - Width: 224.0 px
+   - Height: 112.0 px
+   - Área: 7435.0 px²
+   - Aspect Ratio: 1.00
+
+### INSPECT_TEST
+🚨 CRÍTICO: Muchos bboxes pequeños
+   - 17.0% tienen width < 32px
+   - 16.2% tienen height < 32px
+   ⚠️  Faster R-CNN tiene RPN con anchors mínimos de 32px
+
+Estadísticas medianas:
+   - Width: 314.0 px
+   - Height: 175.0 px
+   - Área: 7914.0 px²
+   - Aspect Ratio: 1.00
+
+## RECOMENDACIONES
+
+### 1. Modificar Anchors de Faster R-CNN
+```python
+anchor_generator = AnchorGenerator(
+    sizes=((16, 32, 64, 128, 256),),  # Añadir 16px
+    aspect_ratios=((0.25, 0.5, 1.0, 2.0, 4.0),)  # Más ratios
+)
+```
+
+### 3. Considerar Vision Transformers
+- DINOv2 maneja mejor objetos pequeños y aspect ratios variados
+- Attention global captura mejor defectos pequeños

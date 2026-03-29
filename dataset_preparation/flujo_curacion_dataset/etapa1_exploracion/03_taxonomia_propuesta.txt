@@ -1,0 +1,60 @@
+defectos_tfg = [
+    {
+        "nombre": "ROTURA/FRACTURA",
+        "vision_labels": ["break", "defect"],
+        "mvtec_labels": ["broken", "broken_large", "crack"],
+        "importancia": "CRÍTICA",
+        "detectabilidad": "ALTA"
+    },
+    {
+        "nombre": "CONTAMINACIÓN", 
+        "vision_labels": ["Dirty", "impurities"],
+        "mvtec_labels": ["contamination", "metal_contamination"],
+        "importancia": "ALTA",
+        "detectabilidad": "ALTA"
+    },
+    {
+        "nombre": "RAYONES/ARAÑAZOS",
+        "vision_labels": ["Scratch", "s_scratch", "t_scratch"],  
+        "mvtec_labels": ["scratch", "scratch_head"],
+        "importancia": "MEDIA",
+        "detectabilidad": "MEDIA-ALTA"
+    },
+    {
+        "nombre": "PERFORACIONES",
+        "vision_labels": ["Hole", "missing_hole"],
+        "mvtec_labels": ["hole", "cut"],
+        "importancia": "CRÍTICA",
+        "detectabilidad": "MUY ALTA"
+    },
+    {
+        "nombre": "DEFORMACIONES",
+        "vision_labels": ["short", "spur"],
+        "mvtec_labels": ["bent", "bent_lead", "bent_wire"],
+        "importancia": "ALTA", 
+        "detectabilidad": "ALTA"
+    }
+]
+
+
+
+# Empezar con categorías que tengan tus defectos target
+categorias_mvtec = [
+    "transistor",    # bent_lead, damaged_case
+    "metal_nut",     # bent, scratch  
+    "cable",         # cut, broken
+    "capsule",       # crack, scratch
+    "hazelnut"       # crack, hole
+]
+
+# Solo entrenar en defectos de tu subset
+defectos_entrenar = ["bent", "scratch", "crack", "hole", "contamination"]
+
+# Componentes VISION con tus defectos target
+componentes_vision = [
+    "PCB_1",        # missing_hole, short
+    "Console",      # Dirty, Scratch  
+    "Electronics",  # damage (genérico)
+    "Cable",        # break
+    "Lens"          # Hole, Surface Damage
+]

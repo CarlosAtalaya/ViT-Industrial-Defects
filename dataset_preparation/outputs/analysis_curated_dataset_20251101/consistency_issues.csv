@@ -1,0 +1,4 @@
+image_id,annotation_id,file,issue,severity,source
+1646,1666,000010.png,Suspiciously small bbox area: 77 pixels,LOW,vision
+1718,1889,000068.png,Suspiciously small bbox area: 83 pixels,LOW,vision
+1758,1936,000132.png,Suspiciously small bbox area: 80 pixels,LOW,vision

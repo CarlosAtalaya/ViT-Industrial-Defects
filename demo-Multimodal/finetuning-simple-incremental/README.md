@@ -344,14 +344,4 @@ training:
 
 ---
 
-## ✨ Próximos Pasos Después de Opción 1
-
-Si **mAP ≥ 0.80:**
-→ Proceder con **Opción 3** (descongelamiento progresivo) para optimizar más
-
-Si **mAP < 0.80:**
-→ Revisar arquitectura de fusión antes de continuar
-
----
-
 **Última actualización:** 23 Noviembre 2024

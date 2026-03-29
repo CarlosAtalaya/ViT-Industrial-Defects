@@ -1,0 +1,103 @@
+{
+  "timestamp": "2025-11-01T13:02:05.818570",
+  "dataset_path": "curated_dataset_20250921_115859",
+  "summary": {
+    "total_images": 1907,
+    "total_annotations": 2125,
+    "total_categories": 15,
+    "duplicates_found": 49,
+    "corrupted_images": 0,
+    "consistency_issues": 3
+  },
+  "categories": {
+    "count": {
+      "normal": 1470,
+      "break": 128,
+      "missing_hole": 124,
+      "Scratch": 60,
+      "Dirty": 60,
+      "short": 47,
+      "scratch": 46,
+      "crack": 41,
+      "spur": 38,
+      "Hole": 28,
+      "bent": 25,
+      "hole": 18,
+      "cut": 17,
+      "bent_wire": 13,
+      "bent_lead": 10
+    },
+    "percentage": {
+      "normal": 69.18,
+      "break": 6.02,
+      "missing_hole": 5.84,
+      "Scratch": 2.82,
+      "Dirty": 2.82,
+      "short": 2.21,
+      "scratch": 2.16,
+      "crack": 1.93,
+      "spur": 1.79,
+      "Hole": 1.32,
+      "bent": 1.18,
+      "hole": 0.85,
+      "cut": 0.8,
+      "bent_wire": 0.61,
+      "bent_lead": 0.47
+    }
+  },
+  "source_distribution": {
+    "images": {
+      "mvtec": 1640,
+      "vision": 267
+    },
+    "annotations": {
+      "mvtec": 1640,
+      "vision": 485
+    }
+  },
+  "unified_preview": {
+    "count": {
+      "NORMAL": 1470,
+      "PERFORACIONES": 187,
+      "ROTURA_FRACTURA": 169,
+      "DEFORMACIONES": 133,
+      "RAYONES_ARANAZOS": 106,
+      "CONTAMINACION": 60
+    },
+    "percentage": {
+      "NORMAL": 69.18,
+      "PERFORACIONES": 8.8,
+      "ROTURA_FRACTURA": 7.95,
+      "DEFORMACIONES": 6.26,
+      "RAYONES_ARANAZOS": 4.99,
+      "CONTAMINACION": 2.82
+    }
+  },
+  "quality_metrics": {
+    "resolution_stats": {
+      "width": {
+        "count": 1907.0,
+        "mean": 1161.282642894599,
+        "std": 669.0234252033861,
+        "min": 262.0,
+        "25%": 1000.0,
+        "50%": 1024.0,
+        "75%": 1024.0,
+        "max": 3840.0
+      },
+      "height": {
+        "count": 1907.0,
+        "mean": 1071.1085474567383,
+        "std": 457.42741815585634,
+        "min": 192.0,
+        "25%": 1000.0,
+        "50%": 1024.0,
+        "75%": 1024.0,
+        "max": 3620.0
+      }
+    },
+    "format_distribution": {
+      "PNG": 1907
+    }
+  }
+}

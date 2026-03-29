@@ -1,0 +1,11 @@
+Total images in JSON: 102
+Total annotations: 145
+Missing image files: 0
+Augmented images flagged: 39
+Top unified categories by image count:
+  NORMAL: 30
+  ROTURA_FRACTURA: 17
+  RAYONES_ARANAZOS: 15
+  PERFORACIONES: 15
+  DEFORMACIONES: 13
+  CONTAMINACION: 13

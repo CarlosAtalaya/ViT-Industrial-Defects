@@ -1,7 +1,7 @@
 # DEIMv2 Industrial Defects: Arquitectura e Implementación
 
 **Última actualización:** 23 Noviembre 2024  
-**Estado:** ✅ FASE 1 COMPLETADA CON ÉXITO (incluye experimentos extendidos) - Listo para FASE 2
+**Estado:** documentación de la implementación DEIMv2 y experimentos de la línea principal (resolución 1024, entrenamientos extendidos).
 
 ---
 
@@ -594,79 +594,13 @@ CLASS_DESCRIPTIONS = {
 - ✅ Campo nuevo `contrast` para explicitar diferencias clave
 - ✅ Descripciones más largas y específicas basadas en análisis de confusiones
 
-### Plan de Implementación FASE 2
-
-#### Semana 1: Setup Técnico (23-29 Nov 2024)
-
-```bash
-# 1. Implementar módulo multimodal
-scripts/deimv2_multimodal/models/
-├── multimodal_fusion.py       # Módulo de fusión
-├── deimv2_multimodal.py        # Wrapper sobre DEIMv2
-└── __init__.py
-
-# 2. Implementar descripciones
-scripts/deimv2_multimodal/data/
-└── class_descriptions.py       # Descripciones optimizadas + contraste
-
-# 3. Script de entrenamiento
-scripts/deimv2_multimodal/
-└── train_deimv2_multimodal.py
-```
-
-#### Semana 2: Entrenamiento Incremental (30 Nov - 6 Dic 2024)
-
-```yaml
-# Config: deimv2_industrial_multimodal.yml
-resume: outputs/deimv2_1024_optimized_run/checkpoint_epoch187.pth  # Mejor de 300ep
-epochs: 30-50                   # Fine-tune moderado
-lr: 0.00005                     # LR muy bajo
-freeze_backbone: True           # Solo entrenar fusión multimodal
-freeze_detector_head: True      # Congelar también cabeza detección
-
-Tiempo estimado: 3-4 horas
-```
-
-**Estrategia de fine-tuning:**
-1. Primeras 20 epochs: Solo módulo multimodal entrena
-2. Últimas 10-30 epochs: Descongelar cabeza clasificación (opcional)
-3. Monitorear sobre-entrenamiento (validación cada 5 epochs)
-
-#### Semana 3: Análisis y Validación (7-13 Dic 2024)
-
-- Evaluar mAP multimodal vs vanilla (300ep)
-- Analizar matriz de confusión ROTURA vs RAYONES
-- Visualizar attention maps texto-visual
-- Analizar mejora por clase
-- Documentar en memoria TFG
-
-### Expectativas FASE 2 Actualizadas
-
-**Escenarios realistas basados en baseline 0.785:**
-
-| Escenario | mAP Final | ROTURA AP | RAYONES AP | DEFORM AP | CONTAM AP | Probabilidad |
-|-----------|-----------|-----------|------------|-----------|-----------|--------------|
-| **Conservador** | 0.80 | 0.62 | 0.83 | 0.80 | 0.68 | 30% |
-| **Realista** | 0.83 | 0.68 | 0.86 | 0.83 | 0.72 | 50% |
-| **Optimista** | 0.86 | 0.72 | 0.88 | 0.85 | 0.75 | 20% |
-
-**Mejora esperada:** +2-8% mAP absoluto sobre 0.785
-
-**Justificación actualizada:**
-- Baseline ya muy alto (0.785), margen de mejora más limitado
-- Fusion semántica puede añadir 3-10% según literatura
-- Confusión ROTURA-RAYONES ya reducida significativamente con entrenamientos largos
-- Oportunidad real: consolidar diferencias y reducir FN en ambas clases
-
----
-
 ## 📂 Estructura Final del Proyecto
 
 ```
 scripts/deimv2_multimodal/
 ├── configs/
 │   ├── deimv2_industrial_defects.yml           # ✅ Config 1024px validado
-│   └── deimv2_industrial_multimodal.yml        # 🔄 FASE 2 (próximo)
+│   └── deimv2_industrial_multimodal.yml        # multimodal (opcional, demo-Multimodal/)
 ├── outputs/
 │   ├── deimv2_industrial_run/                  # Iteración 1 (deprecated)
 │   ├── deimv2_industrial_run_stable/           # Iteración 2 @ 640px
@@ -677,14 +611,14 @@ scripts/deimv2_multimodal/
 │   │   ├── test_evaluation_80ep.json           # Resultados 80ep
 │   │   ├── test_evaluation_120ep.json          # ✅ Resultados 120ep
 │   │   └── test_evaluation_300ep.json          # ✅⭐ Resultados finales
-│   └── deimv2_multimodal_run/                  # 🔄 FASE 2 (futuro)
-├── models/                                      # 🔄 FASE 2
+│   └── deimv2_multimodal_run/                  # salida entrenos multimodales (opcional)
+├── models/                                      # fusión multimodal (opcional)
 │   ├── multimodal_fusion.py
 │   └── deimv2_multimodal.py
 ├── data/
-│   └── class_descriptions.py                   # 🔄 FASE 2 (actualizado)
+│   └── class_descriptions.py                   # descripciones de clase (multimodal)
 ├── train_deimv2_industrial.py                  # ✅ Script entrenamiento
-├── train_deimv2_multimodal.py                  # 🔄 FASE 2
+├── train_deimv2_multimodal.py                  # entrenamiento multimodal (opcional)
 ├── evaluate_deimv2.py                          # ✅ Evaluación COCO
 ├── visualize_deimv2_predictions.py             # ✅ Visualización
 ├── run_evaluation_deimv2.sh                    # ✅ Pipeline completo
@@ -721,106 +655,6 @@ scripts/deimv2_multimodal/
 
 ---
 
-### Estructura Propuesta para Memoria TFG
-
-#### Capítulo 4: Implementación DEIMv2 para Defectos Industriales
-
-**4.1 Arquitectura Base**
-- DINOv3 como backbone preentrenado
-- DEIM Transformer decoder
-- Adaptación a 6 clases de defectos industriales
-
-**4.2 Problema de Resolución**
-- Limitación de Vision Transformers (patches fijos 16×16)
-- Comparación con CNNs (resolución variable)
-- Análisis estadístico dataset: mediana 1024px
-
-**4.3 Proceso Iterativo de Optimización**
-- Iteración 1: Config base @ 640px (FALLIDO - mAP 0.232)
-- Iteración 2: Config optimizado @ 640px (MEJORADO - mAP 0.499)
-- Iteración 3: Config optimizado @ 1024px, 80 epochs (ÉXITO - mAP 0.624)
-- Iteración 4: Extendido @ 1024px, 120 epochs (MEJORA - mAP 0.766)
-- Iteración 5: Extendido @ 1024px, 300 epochs (MÁXIMO - mAP 0.785)
-- Análisis de mejoras progresivas y convergencia
-
-**4.4 Análisis de Convergencia en ViTs**
-- Curvas de aprendizaje por número de epochs
-- Comparación con convergencia típica de CNNs
-- Identificación de punto óptimo (150-200 epochs)
-- Análisis de retorno decreciente post-200 epochs
-
-**4.5 Resultados FASE 1 Completos**
-- Métricas completas: mAP = 0.785
-- Comparación con baselines CNN (+50-57%)
-- Análisis evolutivo por clase
-- Identificación de oportunidades FASE 2
-
----
-
-#### Capítulo 5: Extensión Multimodal Visión-Texto (FASE 2)
-
-**5.1 Motivación Actualizada**
-- Análisis de confusiones en modelo 300 epochs
-- ROTURA vs RAYONES: confusión reducida pero persistente
-- Hipótesis: embeddings texto reforzarán discriminación semántica
-
-**5.2 Arquitectura de Fusión**
-- CLIP como text encoder
-- Módulo de fusión multimodal con attention
-- Fine-tuning sobre mejor checkpoint (epoch 187)
-
-**5.3 Diseño de Descripciones Textuales**
-- Metodología de creación enfocada en contraste
-- Énfasis extremo en profundidad vs superficialidad
-- Validación con expertos del dominio
-
-**5.4 Entrenamiento Incremental**
-- Fine-tuning corto (30-50 epochs) sobre modelo convergido
-- Congelación de backbone y detector base
-- Resultados y análisis de mejoras
-
-**5.5 Análisis de Attention Maps**
-- Visualización de alineación visión-texto
-- Casos de éxito y mejora sobre vanilla
-- Limitaciones y trabajo futuro
-
----
-
-#### Capítulo 6: Resultados y Análisis Comparativo
-
-**6.1 Tabla Comparativa Final**
-
-| Modelo | Resolución | Epochs | mAP@0.5 | AP ROTURA | AP RAYONES | Params | Tiempo |
-|--------|------------|--------|---------|-----------|------------|--------|--------|
-| ResNet-18 | Original | 100 | 0.50* | 0.42* | 0.38* | 11M | 1h |
-| EfficientNet | Original | 100 | 0.52* | 0.45* | 0.40* | 5M | 1h |
-| DEIMv2 (640px) | 640 | 86 | 0.50 | 0.41 | 0.39 | 17.8M | 1h |
-| DEIMv2 (1024px) | 1024 | 80 | 0.624 | 0.384 | 0.476 | 17.4M | 1h20min |
-| DEIMv2 (1024px) | 1024 | 120 | 0.766 | 0.539 | 0.717 | 17.4M | 2h |
-| **DEIMv2 (1024px)** | **1024** | **187** | **0.785** | **0.576** | **0.806** | **17.4M** | **5h** |
-| DEIMv2-MM* | 1024 | 187+40 | **0.82-0.85** | **0.68-0.72** | **0.85-0.88** | 19M | 18h |
-
-_*FASE 2 - Resultados esperados_
-
-**6.2 Análisis Cualitativo**
-- Visualizaciones de predicciones por iteración
-- Evolución de casos difíciles a través de los entrenamientos
-- Patrones aprendidos por el modelo
-
-**6.3 Discusión**
-- Trade-offs: tiempo de entrenamiento vs rendimiento
-- Convergencia de ViTs vs CNNs en dominio industrial
-- Viabilidad en producción (inferencia es rápida)
-- Futuras líneas de investigación
-
-**6.4 Lecciones Aprendidas**
-- Importancia de resolución adecuada (>40% información)
-- Necesidad de entrenamientos largos para ViTs (>100 epochs)
-- Identificación de punto óptimo eficiencia-rendimiento
-- Valor de análisis evolutivo multi-iteración
-
----
-
 ## 🚨 Decisiones Críticas Tomadas
 
 ### ✅ Decisión 1: Resolución 1024×1024
@@ -843,67 +677,6 @@ _*FASE 2 - Resultados esperados_
 **Justificación:** Análisis de retorno decreciente post-187  
 **Resultado:** **VALIDADO** → Balance ideal eficiencia-rendimiento
 
-### 🔄 Decisión 5: Extensión Multimodal FASE 2
-**Fecha:** 23 Nov 2024  
-**Justificación:** Confusión ROTURA-RAYONES reducida pero persistente  
-**Resultado:** **PENDIENTE** → Implementar con targets actualizados
-
----
-
-## 📞 Próximos Pasos Inmediatos
-
-### Esta Semana (24-30 Nov 2024)
-
-**1. ✅ Actualizar documentación**
-- [x] Incluir resultados 120 y 300 epochs
-- [x] Actualizar análisis de convergencia
-- [x] Revisar targets FASE 2
-
-**2. 🔄 Implementar FASE 2**
-```bash
-# Crear módulo multimodal
-cd scripts/deimv2_multimodal/models
-# Implementar multimodal_fusion.py
-# Implementar deimv2_multimodal.py
-
-# Crear descripciones optimizadas
-cd ../data
-# Implementar class_descriptions.py con énfasis en contraste
-
-# Test de integración
-python test_multimodal_forward.py
-```
-
-**3. Preparar config multimodal**
-```yaml
-# configs/deimv2_industrial_multimodal.yml
-resume: outputs/deimv2_1024_optimized_run/checkpoint_epoch187.pth
-epochs: 40
-lr: 0.00005
-freeze_backbone: True
-freeze_detector_head: True
-```
-
----
-
-### Próxima Semana (1-7 Dic 2024)
-
-**4. Iniciar FASE 2: Entrenamiento Multimodal**
-```bash
-cd scripts/deimv2_multimodal
-python train_deimv2_multimodal.py \
-  --config configs/deimv2_industrial_multimodal.yml \
-  --resume outputs/deimv2_1024_optimized_run/checkpoint_epoch187.pth
-
-# Tiempo estimado: 3-4 horas
-```
-
-**5. Evaluar y analizar**
-- Métricas multimodal vs vanilla (baseline 0.785)
-- Matriz de confusión ROTURA vs RAYONES
-- Visualizar attention maps texto-visual
-- Documentar mejoras en memoria TFG
-
 ---
 
 ## 🏆 Logros Alcanzados FASE 1 (Actualizado)
@@ -924,104 +697,6 @@ python train_deimv2_multimodal.py \
 
 ---
 
-## 🎯 Objetivos FASE 2 (Actualizados)
+## Artefactos generados
 
-**Meta Principal:** mAP@0.5 → **0.82-0.85** (+4-8% sobre 0.785)
-
-**Mejoras por Clase (Targets realistas):**
-- ROTURA_FRACTURA: 0.576 → **0.68-0.72** (+10-14%)
-- CONTAMINACION: 0.645 → **0.70-0.75** (+6-10%)
-- RAYONES_ARANAZOS: 0.806 → **0.85-0.88** (+4-7%)
-- DEFORMACIONES: 0.779 → **0.82-0.85** (+4-7%)
-
-**Si se logra meta optimista (0.85):** DEIMv2-Multimodal será **significativamente superior** a todos los baselines con ventaja >60%, estableciendo un nuevo estado del arte en detección de defectos industriales con ViTs.
-
----
-
-**Estado del proyecto:** ✅ **FASE 1 COMPLETADA CON ÉXITO TOTAL**  
-**Próxima acción:** IMPLEMENTAR FASE 2 - Extensión Multimodal sobre mejor checkpoint (epoch 187)  
-**Última actualización:** 23 Noviembre 2024  
-**Responsable:** Carlos [TFG 2025-26]
-
----
-
-## 📊 Gráficas y Visualizaciones Recomendadas para Memoria TFG
-
-### 1. Curva de Convergencia (mAP vs Epochs)
-```
-Líneas:
-- DEIMv2 @ 640px (hasta epoch 86)
-- DEIMv2 @ 1024px, 80 epochs
-- DEIMv2 @ 1024px, 120 epochs
-- DEIMv2 @ 1024px, 300 epochs (marcar epoch 187 óptimo)
-- Baselines CNN (horizontal)
-
-Mostrar:
-- Convergencia rápida CNNs (~50 epochs)
-- Convergencia lenta ViTs (~150 epochs)
-- Plateau después de epoch 200
-```
-
-### 2. Comparativa AP por Clase (Barras Agrupadas)
-```
-Eje X: 6 clases de defectos
-Eje Y: AP@0.5
-Grupos:
-- ResNet-18 (estimado)
-- EfficientNet (estimado)
-- DEIMv2 @ 640px
-- DEIMv2 @ 1024px (80ep)
-- DEIMv2 @ 1024px (120ep)
-- DEIMv2 @ 1024px (300ep)
-```
-
-### 3. Evolución Individual por Clase
-```
-6 mini-gráficas (una por clase):
-- Eje X: Iteración del modelo (1-5)
-- Eje Y: AP
-- Mostrar mejora progresiva
-- Destacar clases con mayor mejora (RAYONES +69%)
-```
-
-### 4. Trade-off Tiempo vs Rendimiento
-```
-Scatter plot:
-- Eje X: Tiempo de entrenamiento (horas)
-- Eje Y: mAP@0.5
-- Puntos: Cada modelo/configuración
-- Línea de tendencia
-- Marcar "sweet spot" (150-200 epochs, 12-14h)
-```
-
-### 5. Matriz de Confusión (Antes y Después)
-```
-Dos matrices lado a lado:
-- Izquierda: DEIMv2 @ 80 epochs
-- Derecha: DEIMv2 @ 300 epochs (epoch 187)
-- Destacar reducción confusión ROTURA-RAYONES
-```
-
----
-
-## 📝 Resumen de Archivos de Resultados
-
-```
-outputs/deimv2_1024_optimized_run/
-├── test_evaluation_80ep.json           # mAP: 0.624
-├── test_evaluation_120ep.json          # mAP: 0.766 (mejor epoch 119)
-├── test_evaluation_300ep.json          # mAP: 0.785 (mejor epoch 187) ⭐
-├── training_log_80ep.txt               # Log completo 80 epochs
-├── training_log_120ep.txt              # Log completo 120 epochs
-├── training_log_300ep.txt              # Log completo 300 epochs
-├── validation_map_plot_80ep.png        # Curva mAP validación 80ep
-├── validation_map_plot_120ep.png       # Curva mAP validación 120ep
-├── validation_map_plot_300ep.png       # Curva mAP validación 300ep ⭐
-└── visualizations_comparative/         # Predicciones comparadas
-```
-
-**Nota:** Todos los checkpoints (.pth) están disponibles para reproducción y análisis posterior.
-
----
-
-**FIN DEL DOCUMENTO - ACTUALIZADO CON EXPERIMENTOS EXTENDIDOS**
+Al ejecutar entrenamiento y evaluación, los JSON de métricas, logs y gráficas se escriben bajo `scripts/deimv2_multimodal/outputs/` (no versionados en Git por tamaño). La línea multimodal exploratoria vive en `demo-Multimodal/`.

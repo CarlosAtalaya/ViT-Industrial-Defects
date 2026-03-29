@@ -13,7 +13,8 @@ La memoria técnica del TFG (contexto industrial, objetivos, metodología y resu
 | **Entrenamiento y evaluación** | Scripts por arquitectura en `scripts/resnet18/`, `scripts/efficientnet/`, `scripts/deimv2_multimodal/` (pipelines, evaluación COCO, visualización de predicciones). |
 | **Dashboard comparativo** | Aplicación Streamlit autocontenida en `herramienta_comparativa/` con histórico de fases, métricas y visualización dinámica Ground Truth vs predicciones. |
 | **Experimentación multimodal (exploratoria)** | Código adicional bajo `demo-Multimodal/` (extensiones no necesarias para la línea principal ResNet / EfficientNet / DEIMv2). |
-| **Utilidades de dataset** | Scripts en `scripts/re-analyze-1st-dataset-version/` para análisis del conjunto de datos. |
+| **Fase 0 — Curación del dataset** | Documentación y scripts en [`dataset_preparation/`](dataset_preparation/README.md): descarga de VISION y MVTec AD, pipeline por etapas y salidas de análisis de ejemplo. |
+| **Utilidades de dataset** | Scripts en `scripts/re-analyze-1st-dataset-version/` para análisis adicional sobre el conjunto de datos. |
 
 ---
 
@@ -43,18 +44,21 @@ Documentación detallada: [herramienta_comparativa/README.md](herramienta_compar
 
 ## Reproducir la experimentación (entrenamiento / evaluación)
 
-1. **Dataset**  
-   El directorio del dataset curado y particionado (`curated_dataset_splitted_20251101_provisional_1st_version/`) está **excluido del control de versiones** (tamaño y política de datos). Debes colocarlo en la **raíz del repositorio** con la estructura esperada por los scripts (`train/`, `test/`, anotaciones COCO, etc.) o ajustar las variables `DATASET_PATH` en los `run_pipeline.sh` y rutas equivalentes en Python.
+1. **Origen y curación del dataset (Fase 0)**  
+   Para **reconstruir** el dataset unificado desde VISION-Datasets y MVTec AD, sigue [`dataset_preparation/README.md`](dataset_preparation/README.md) y la guía de descarga [`dataset_preparation/DESCARGA_DATASETS_ORIGEN.md`](dataset_preparation/DESCARGA_DATASETS_ORIGEN.md) (enlaces oficiales, licencias y rutas). Los datos crudos no se versionan; colócalos p. ej. en `VISION-Datasets/` y `mvtec-ad/` en la raíz del clon (ignorados por Git).
 
-2. **Por arquitectura**  
+2. **Dataset curado listo para entrenar**  
+   El directorio del dataset particionado (`curated_dataset_splitted_20251101_provisional_1st_version/`) está **excluido del control de versiones** (tamaño y política de datos). Debes colocarlo en la **raíz del repositorio** con la estructura esperada por los scripts (`train/`, `test/`, anotaciones COCO, etc.) o ajustar las variables `DATASET_PATH` en los `run_pipeline.sh` y rutas equivalentes en Python.
+
+3. **Por arquitectura**  
    - ResNet-18: [scripts/resnet18/README.md](scripts/resnet18/README.md) y `run_pipeline.sh`.  
    - EfficientNet: [scripts/efficientnet/README.md](scripts/efficientnet/README.md) y `run_pipeline.sh`.  
    - DEIMv2: [scripts/deimv2_multimodal/README.md](scripts/deimv2_multimodal/README.md), configuración YAML y scripts de entrenamiento/evaluación.
 
-3. **Visualización de predicciones y alineación con el dashboard**  
+4. **Visualización de predicciones y alineación con el dashboard**  
    Instrucciones unificadas: [INSTRUCCIONES_VISUALIZACION.md](INSTRUCCIONES_VISUALIZACION.md).
 
-4. **Metadatos de experimentos**  
+5. **Metadatos de experimentos**  
    Los resultados agregados que alimentan el dashboard viven bajo `herramienta_comparativa/data/` (`experiments_metadata.json`, carpetas `fase1_baseline/`, `fase3_comparacion_justa/`, etc.).
 
 ---
@@ -75,6 +79,8 @@ El dashboard **no** depende de rutas externas tipo `curated_dataset_.../test/ima
 
 | Documento | Contenido |
 |-----------|-----------|
+| [dataset_preparation/README.md](dataset_preparation/README.md) | Fase 0: curación del dataset, índice del pipeline y enlace a descarga de fuentes. |
+| [dataset_preparation/DESCARGA_DATASETS_ORIGEN.md](dataset_preparation/DESCARGA_DATASETS_ORIGEN.md) | Descarga oficial de VISION-Datasets (Hugging Face) y MVTec AD (MVTec). |
 | [INSTRUCCIONES_VISUALIZACION.md](INSTRUCCIONES_VISUALIZACION.md) | Flujo de visualización por arquitectura e integración con el dashboard. |
 | [herramienta_comparativa/FASE_EXPERIMENTACION.md](herramienta_comparativa/FASE_EXPERIMENTACION.md) | Narrativa de fases de experimentación y resultados resumidos. |
 

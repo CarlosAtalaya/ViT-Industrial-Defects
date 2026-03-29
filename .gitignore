@@ -1,6 +1,11 @@
 results/
-outputs/
+# Solo la carpeta outputs en la raíz del repo (no dataset_preparation/outputs/)
+/outputs/
 curated_dataset_splitted_20251101_provisional_1st_version/
+# Datasets crudos (descarga manual; ver dataset_preparation/DESCARGA_DATASETS_ORIGEN.md)
+VISION-Datasets/
+mvtec-ad/
+dataset_preparation/venv_curacion/
 models/
 docs/
 DEIMv2

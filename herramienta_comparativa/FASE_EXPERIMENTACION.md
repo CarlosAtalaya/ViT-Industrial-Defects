@@ -942,5 +942,5 @@ Nuestros resultados son consistentes con modelos bien entrenados reportados en l
 
 **Fin del Documento de Experimentación**
 
-*Este documento proporciona una documentación completa y rigurosa de todas las fases de experimentación realizadas, adecuada para su inclusión en la memoria técnica del TFG.*
+*Documentación consolidada de las fases de experimentación del proyecto.*
 
